@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "LOPO POS",
+    "slug": "lopo-pos",
+    "version": "1.0.0",
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}
