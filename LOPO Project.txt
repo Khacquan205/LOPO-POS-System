@@ -1,0 +1,225 @@
+﻿Các chức năng dự án
+FUNCTIONAL REQUIREMENT
+
+
+1. Tổng quan dự án: Hệ sinh thái POS Di động 
+Dự án của tôi là một giải pháp Point of Sale (POS) hiện đại, được thiết kế để biến các thiết bị di động thành máy bán hàng cầm tay chuyên nghiệp cho các cửa hàng tiện lợi.
+* Mục tiêu chính: Tối ưu hóa tốc độ bán hàng, đơn giản hóa việc quản lý kho và thanh toán thông qua mã QR và giao diện di động trực quan.
+________________
+
+
+2. Phân tích chi tiết chức năng 
+Dự án chia ra làm 2 vai trò chính đó là chủ cửa hàng ( người quản lý sản phẩm của cửa hàng , quản lý nhân viên của cửa hàng ) và nhân viên bán hàng ( bán hàng và quản lý các đơn hàng). 
+
+
+
+
+Flow 1 : Quy trình bán hàng
+Flow 1 chính là nơi nhân viên/chủ cửa hàng thực hiện các giao dịch bán hàng  với khách hàng.
+
+
+Bước 1: Đăng kí và đăng nhập với vai trò là nhân viên/chủ cửa hàng để bán hàng
+Bước 2: Sau khi đăng nhập cho phép chọn 1 cửa hàng để làm việc
+* Chọn cửa hàng: Hệ thống cho phép nhân viên đăng nhập vào đúng chi nhánh đang làm việc để đồng bộ kho hàng và doanh thu cho cơ sở đó.
+* Đối với chủ cửa hàng thì sẽ cho phép tạo một cửa hàng mới và tham gia vào cửa hàng đó
+Bước 3: Bán hàng và khởi tạo đơn hàng
+* Màn hình đơn hàng (Draft Order): Ngay khi nhấn "Bán hàng", một mã đơn hàng duy nhất (ví dụ: SO001) sẽ được hệ thống tự động sinh 
+Bước 4: Nhập sản phẩm
+Ở giai đoạn này, phần mềm cung cấp hai cách để đưa sản phẩm vào giỏ hàng:
+* Thêm sản phẩm (Manual Selection):
+   * Bộ lọc danh mục: Phân loại theo Bánh kẹo, Thức uống, Văn phòng phẩm... giúp nhân viên tìm kiếm nhanh bằng mắt.
+   * Tìm kiếm thông minh: Ô nhập tên sản phẩm hỗ trợ tìm kiếm theo thời gian thực.
+* Quét sản phẩm (Barcode/QR): Sử dụng camera điện thoại làm máy quét. Chức năng này sẽ gọi API để đối chiếu mã vạch với Database và trả về thông tin sản phẩm ngay lập tức.
+Bước 3: Quản lý giỏ hàng & Số lượng
+* Bộ đếm (Quantity Picker): Cho phép nhân viên tăng/giảm số lượng sản phẩm bằng một lần chạm (ví dụ: 1 cái, 2 cái...).
+* Xác nhận chọn món: Nút "Xong" sẽ đóng gói danh sách sản phẩm và đẩy dữ liệu về màn hình hóa đơn để tính tổng tiền.
+Bước 4: Chốt đơn & Thanh toán
+* Gán khách hàng: Có thể chọn "Khách vãng lai" (mặc định) hoặc chọn khách hàng thân thiết (ví dụ: "Nguyễn Văn Thành") để áp dụng các ưu đãi thành viên.
+* Tính tổng tiền: Hệ thống tự động tính toán số tiền khách phải trả dựa trên công thức
+* Thanh toán: Nút "Thanh toán [Số tiền]" là bước xác nhận cuối cùng để chuyển sang màn hình thanh toán (xuất mã VietQR động hoặc ghi nhận tiền mặt).
+Flow 2 : Quy trình quản lý đơn hàng
+Flow này cho phép nhân viên và chủ cửa hàng theo dõi toàn bộ lịch sử giao dịch, quản lý các hóa đơn chưa hoàn tất và truy xuất thông tin thanh toán.
+Bước 1: Truy cập danh sách đơn hàng
+* Thao tác: Từ màn hình chính (Dashboard), người dùng chọn mục "Đơn hàng".
+* Chức năng: Hệ thống hiển thị danh sách toàn bộ đơn hàng được sắp xếp theo thời gian mới nhất, bao gồm mã đơn (ví dụ: SO00000015), thời gian tạo và tổng giá trị đơn hàng.
+Bước 2: Phân loại theo trạng thái đơn hàng
+Hệ thống quản lý đơn hàng dựa trên 3 trạng thái cốt lõi được hiển thị qua các tab bộ lọc:
+* Trạng thái Nháp (Draft):
+   * Là các đơn hàng mới đang trong quá trình thêm sản phẩm nhưng chưa thực hiện thanh toán.
+   * Đặc điểm: Cho phép nhân viên tạm dừng đơn hàng để phục vụ khách khác và quay lại sau.
+* Trạng thái Hoàn thành (Completed):
+   * Đơn hàng đã được xác nhận thanh toán thành công (thông qua tiền mặt hoặc quét mã VietQR).
+   * Dữ liệu tồn kho đã được trừ tương ứng trong MongoDB.
+* Trạng thái Hủy (Cancelled):
+   * Cơ chế tự động: Hệ thống sẽ tự động chuyển đơn hàng sang trạng thái Hủy nếu sau một khoảng thời gian nhất định (Timeout) mà giỏ hàng vẫn trống hoặc không có thao tác mới.
+   * Giúp làm sạch cơ sở dữ liệu và tránh các đơn hàng "rác".
+Bước 3: Xử lý tương tác theo trạng thái
+Tùy vào trạng thái của đơn hàng khi người dùng nhấn chọn, hệ thống sẽ điều hướng đến các màn hình chức năng khác nhau:
+* Khi chọn Đơn nháp: * Hệ thống điều hướng quay lại màn hình đơn hàng chi tiết.
+   * Tại đây, nhân viên có thể tiếp tục thêm sản phẩm, thay đổi số lượng hoặc nhấn "Thanh toán" để hoàn tất hóa đơn.
+* Khi chọn Đơn hoàn thành: * Hệ thống hiển thị trang Bill (Hóa đơn thanh toán).
+   * Trang này dùng để đối soát, in lại hóa đơn cho khách hàng hoặc kiểm tra lại thông tin khách hàng thân thiết đã mua đơn đó (ví dụ: "Nguyễn Văn Thành").
+
+
+
+
+
+
+Flow 3 : Quy trình quản lý sản phẩm
+Flow này cho phép Chủ cửa hàng (hoặc nhân viên được phân quyền) khởi tạo, chỉnh sửa và kiểm soát toàn bộ danh mục hàng hóa trong hệ thống LOPO.
+Bước 1: Truy cập danh sách sản phẩm
+* Thao tác: Từ màn hình Dashboard chính, người dùng nhấn vào nút chức năng "Sản phẩm".
+* Chức năng: Hệ thống điều hướng đến màn hình "QUẢN LÝ SẢN PHẨM", hiển thị danh sách tất cả mặt hàng đang có trong cơ sở dữ liệu MongoDB.
+Bước 2: Tìm kiếm và Lọc sản phẩm
+Để quản lý hiệu quả khi số lượng hàng hóa lớn, màn hình này cung cấp các công cụ:
+* Tìm kiếm: Ô nhập tên sản phẩm giúp truy xuất nhanh món đồ cần chỉnh sửa.
+* Bộ lọc loại sản phẩm: Các tab danh mục như Bánh kẹo, Thức uống, Văn phòng phẩm... giúp phân loại hiển thị trực quan.
+Bước 3: Thêm mới hoặc Chỉnh sửa sản phẩm
+* Thao tác: Người dùng nhấn vào nút "+" (Floating Action Button) màu xanh để thêm mới hoặc nhấn trực tiếp vào một dòng sản phẩm để chỉnh sửa.
+* Các thuộc tính chính (5 thuộc tính cốt lõi): Tại màn hình tạo mới, người dùng cần điền đầy đủ các trường thông tin:
+   1. Tên sản phẩm: Định danh mặt hàng (Ví dụ: Bánh mì).
+   2. Giá sản phẩm: Giá bán lẻ niêm yết trên hệ thống.
+   3. Loại sản phẩm: Chọn từ danh sách có sẵn hoặc thêm mới loại hình để phân loại kho.
+   4. Barcode: Mã vạch định danh duy nhất cho sản phẩm. Có thể nhập thủ công hoặc sử dụng biểu tượng Scan để quét trực tiếp từ bao bì sản phẩm.
+   5. Hàng tồn kho: Khi kích hoạt "Quản lý tồn kho", người dùng nhập số lượng thực tế đang có (Ví dụ: 67).
+Bước 4: Lưu trữ và Xác nhận
+* Hình ảnh: Cho phép "Chọn ảnh" đại diện để nhân viên dễ dàng nhận diện mặt hàng khi bán hàng thủ công.
+* Thao tác cuối: Nhấn "Tạo mới" để đẩy dữ liệu lên server Node.js và lưu vào MongoDB hoặc nhấn "Hủy" để quay lại.
+
+
+
+
+Flow 4 : Quy trình quản lý nhân viên của chủ cửa hàng
+Flow này cung cấp quyền kiểm soát tuyệt đối cho chủ cửa hàng trong việc điều phối nhân sự, đảm bảo chỉ những nhân viên hợp lệ mới có thể truy cập hệ thống để bán hàng.
+Bước 1: Truy cập quản lý nhân sự
+* Thao tác: Từ màn hình Dashboard chính, chủ cửa hàng nhấn vào nút "Nhân viên".
+* Chức năng: Hệ thống điều hướng đến màn hình "QUẢN LÝ NHÂN VIÊN", nơi lưu trữ toàn bộ hồ sơ nhân sự của cửa hàng.
+Bước 2: Theo dõi danh sách và Trạng thái
+Màn hình này hiển thị danh sách nhân viên với các thông tin nhận diện nhanh:
+* Thông tin hiển thị: Tên nhân viên (ví dụ: Nguyễn Văn Thành), Mã số nhân viên (ví dụ: ST00000035) và Số điện thoại liên lạc.
+* Phân loại trạng thái: * Đang hoạt động (Màu xanh lá): Nhân viên có quyền đăng nhập và thực hiện các giao dịch bán hàng.
+   * Ngừng hoạt động (Màu xanh dương): Nhân viên bị tạm khóa quyền truy cập hệ thống (ví dụ: khi nghỉ phép hoặc nghỉ việc).
+* Tìm kiếm nhanh: Ô tìm kiếm cho phép chủ cửa hàng tra cứu nhân viên theo Tên hoặc Số điện thoại một cách tức thì.
+Bước 3: Xem chi tiết, Chỉnh sửa và Xóa
+* Thao tác: Nhấn vào một dòng nhân viên bất kỳ trong danh sách.
+* Chức năng chi tiết:
+   * Xem & Sửa: Chủ cửa hàng có thể thay đổi các thông tin cơ bản như Tên, Số điện thoại và cập nhật lại Trạng thái làm việc.
+   * Xóa: Loại bỏ hoàn toàn hồ sơ nhân viên khỏi danh sách quản lý của cửa hàng.
+Bước 4: Thêm mới nhân viên
+* Thao tác: Nhấn vào nút "+" (Floating Action Button) màu xanh ở góc dưới màn hình.
+* Chức năng: Mở ra form đăng ký để chủ cửa hàng nhập thông tin cho nhân viên mới, thiết lập tài khoản ban đầu để họ có thể tham gia vào Flow 1 (Bán hàng).
+Kiến trúc dự án
+1. Kiến trúc tổng thể hệ thống
+Để hệ thống vận hành trơn tru trên cả Web (cho quản lý) và Mobile (cho nhân viên bán hàng), bạn nên đi theo mô hình Client-Server.
+* Backend: Node.js (Express) đóng vai trò trung tâm xử lý dữ liệu.
+* Web Admin (React/NextJS): Dành cho chủ cửa hàng quản lý kho, xem báo cáo, quản lý nhân viên.
+* Mobile App (React Native): Dành cho nhân viên quét mã vạch, lên đơn hàng và thanh toán tại quầy hoặc tại bàn.
+* Database: MongoDB (dữ liệu có cấu trúc như hóa đơn, sản phẩm) kết hợp với Redis (để cache hoặc xử lý real-time).
+________________
+
+
+2. Các tính năng cốt lõi (Core Features)
+A. Quản lý sản phẩm & Kho hàng (Inventory)
+* Danh mục sản phẩm: Phân loại hàng hóa theo nhóm (đồ uống, thực phẩm, đồ gia dụng...).
+* Quản lý SKU/Barcode: Mỗi sản phẩm cần có mã vạch để nhân viên dùng điện thoại (React Native) quét nhanh.
+* Cảnh báo tồn kho: Hệ thống tự thông báo khi hàng trong kho sắp hết.
+B. Xử lý bán hàng (Checkout Flow)
+* Quét mã vạch: Sử dụng thư viện camera trên React Native để quét mã sản phẩm.
+* Giỏ hàng: Tính toán tổng tiền, chiết khấu, thuế VAT tự động.
+* Thanh toán đa phương thức: Tích hợp chuyển khoản ngân hàng (VietQR), ví điện tử (MoMo/ZaloPay) hoặc tiền mặt.
+D. Báo cáo & Thống kê (Dashboard)
+* Biểu đồ doanh thu theo ngày/tháng/năm.
+* Danh sách các sản phẩm bán chạy nhất (Best-sellers).
+________________
+
+
+3. Công nghệ chi tiết (Tech Stack)
+Thành phần
+	Công nghệ đề xuất
+	Lý do
+	Backend
+	Node.js (NestJS)
+	NestJS giúp cấu trúc code rõ ràng, dễ bảo trì cho dự án lớn.
+	Database
+	PostgreSQL + Prisma
+	Đảm bảo tính nhất quán của dữ liệu hóa đơn và tồn kho.
+	Web Frontend
+	React + TailwindCSS
+	Xây dựng giao diện quản lý nhanh, mượt và chuyên nghiệp.
+	Mobile App
+	React Native (Expo)
+	Giúp bạn tận dụng kiến thức React và camera điện thoại để làm máy POS cầm tay.
+	Real-time
+	Socket.io
+	Cập nhật trạng thái đơn hàng hoặc kho hàng ngay lập tức giữa các thiết bị.
+	________________
+
+
+4. Lộ trình triển khai (Roadmap)
+Giai đoạn 1: Thiết kế Database & API cơ bản
+* Thiết kế bảng: Products, Categories, Users, Orders, OrderItems.
+* Viết API CRUD cho sản phẩm và quản lý kho.
+Giai đoạn 2: Xây dựng giao diện bán hàng (Mobile)
+* Tập trung vào tính năng chọn món/quét mã và tạo đơn hàng.
+* Đây là phần quan trọng nhất của một máy POS.
+Giai đoạn 3: Xây dựng Dashboard (Web)
+* Làm trang quản lý sản phẩm và xem danh sách hóa đơn đã bán.
+* Tích hợp biểu đồ (Sử dụng thư viện Chart.js hoặc Recharts).
+Giai đoạn 4: Tích hợp thanh toán & In hóa đơn
+* Tạo mã VietQR động dựa trên tổng tiền của đơn hàng.
+
+
+
+
+Figma
+Figma
+DB Diagram
+https://dbdiagram.io/d/68df3604d2b621e4220fcce4        
+Chia task
+
+
+🚀 Lộ trình triển khai (Sprint 1 tuần đầu)
+Vai trò
+	Công việc trọng tâm
+	Backend
+	Hoàn thành Schema DB + API Auth + API đăng kí đăng nhập.
+	Mobile
+	Dựng khung UI đăng kí đăng nhập + Kết nối API lấy danh sách sản phẩm.
+	Web
+	Dựng khung dự án Web Admin + Thiết lập môi trường Dev. 
+	
+
+Task 1 (Deadline 1/3/2026): 
+1. Phân chia công việc cụ thể cho 2 Backend
+Backend 1: Core Security & Infrastructure
+* Thiết lập dự án: Khởi tạo Framework (NodeJS/Express), kết nối Database (MongoDB).
+* Cơ chế Authentication: * Triển khai JWT (JSON Web Token): Access Token (ngắn hạn) và Refresh Token (dài hạn).
+   * Mã hóa mật khẩu bằng Argon2 hoặc Bcrypt.
+* Middleware/Guards: Viết các bộ lọc (Guards) để kiểm tra Token và quyền truy cập của User trên mỗi Request.
+* Tích hợp Postman: Tự động tạo tài liệu API để team Mobile có thể xem và test ngay.
+Backend 2: User Management & RBAC Logic
+* Thiết kế Schema Database: Thiết lập bảng Users, Roles, Permissions và Stores. (Lưu ý: Một User thuộc về một Store cụ thể).
+* API Nghiệp vụ:
+   * POST /auth/login: Đăng nhập.
+   * POST /auth/register-owner: Đăng ký tài khoản chủ cửa hàng (Owner).
+   * POST /users/staff: Chủ cửa hàng tạo tài khoản cho nhân viên (Staff).
+   * GET /users/me: Lấy thông tin tài khoản hiện tại kèm quyền hạn.
+* Seed Data: Viết script tạo sẵn các Role mặc định (OWNER, STAFF, MANAGER) để hệ thống sẵn sàng chạy ngay.
+
+
+2. Phân chia công việc cụ thể cho 2 Mobile
+Mục tiêu chính là hoàn thành Base Code, Navigation, và UI 4 màn hình chính (Login, Register, Forgot Password, Home) với dữ liệu giả (Mock Data) trước khi đợi API từ Backend.
+1. Phân chia nhiệm vụ (Task Breakdown)
+Mobile 1: Architect & Auth Flow
+* Khởi tạo Project & Cấu trúc thư mục: Thiết lập cấu trúc thư mục theo mô hình (ví dụ: Feature-based hoặc Clean Architecture).
+* Luồng Navigation (Điều hướng): Cấu hình luồng chuyển cảnh (ví dụ: Nếu chưa login -> Auth Stack; Nếu đã login -> Main Stack).
+* Màn hình Auth (UI Implementation):
+   * Dựng màn hình Đăng nhập (Login): Xử lý Validation form (Email đúng định dạng, Password tối thiểu 8 ký tự...).
+   * Dựng màn hình Đăng ký (Register): Chọn loại tài khoản (Chủ cửa hàng/Nhân viên).
+   * Dựng màn hình Quên mật khẩu (Forgot Password): Luồng nhập Email -> Nhận mã OTP (UI).
+Mobile 2: UI Kit & Home Dashboard
+* Thiết lập Design System (Theme): Khai báo bảng màu (Primary, Secondary), Typography (Font size, Weight) và các Component dùng chung (Buttons, TextFields, Cards) dựa trên Figma.
+* Màn hình Trang chủ (Home Screen - POS Dashboard):
+   * Dựng Layout tổng thể: Bottom Navigation Bar hoặc Side Menu.
+   * Giao diện Dashboard: Hiển thị nhanh doanh số (Chart đơn giản), danh sách đơn hàng gần đây, và các nút truy cập nhanh (Tạo đơn, Kiểm kho).
+* Quản lý State (Trạng thái): Thiết lập Store (Zustand, Redux, hoặc BLoC) để lưu trữ thông tin người dùng sau khi login thành công.
