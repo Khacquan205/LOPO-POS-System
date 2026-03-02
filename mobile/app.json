@@ -3,8 +3,33 @@
     "name": "LOPO POS",
     "slug": "lopo-pos",
     "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/LoGo LOPO.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/LoGo LOPO.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4280EF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lopo.pos"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/LoGo LOPO.png",
+        "backgroundColor": "#4280EF"
+      },
+      "package": "com.lopo.pos"
+    },
     "experiments": {
       "tsconfigPaths": true
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
