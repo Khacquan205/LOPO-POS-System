@@ -8,6 +8,9 @@ import { TokenType } from '~/constants/enum.js'
 import { ErrorWithStatus } from './error.middlewares.js'
 import HTTP_STATUS from '~/constants/httpStatus.js'
 
+const passwordStrengthRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,20}$/
+const phoneNumberRegex = /^0\d{9}$/
+
 const registerFieldsSchema = {
   full_name: {
     notEmpty: { errorMessage: USERS_MESSAGES.FULL_NAME_IS_REQUIRED },
@@ -17,7 +20,7 @@ const registerFieldsSchema = {
   phone_number: {
     notEmpty: { errorMessage: USERS_MESSAGES.PHONE_NUMBER_IS_REQUIRED },
     matches: {
-      options: /^(0[3|5|7|8|9])+([0-9]{8})$/,
+      options: phoneNumberRegex,
       errorMessage: USERS_MESSAGES.PHONE_NUMBER_IS_INVALID
     },
     custom: {
@@ -32,9 +35,9 @@ const registerFieldsSchema = {
   },
   password: {
     notEmpty: { errorMessage: USERS_MESSAGES.PASSWORD_IS_REQUIRED },
-    isLength: {
-      options: { min: 6, max: 50 },
-      errorMessage: USERS_MESSAGES.PASSWORD_LENGTH_MUST_BE_FROM_6_TO_50
+    matches: {
+      options: passwordStrengthRegex,
+      errorMessage: USERS_MESSAGES.PASSWORD_MUST_INCLUDE_UPPER_SPECIAL_NUMBER
     }
   },
   confirm_password: {
@@ -80,15 +83,15 @@ export const loginValidator = validate(
       phone_number: {
         notEmpty: { errorMessage: USERS_MESSAGES.PHONE_NUMBER_IS_REQUIRED },
         matches: {
-          options: /^(0[3|5|7|8|9])+([0-9]{8})$/,
+          options: phoneNumberRegex,
           errorMessage: USERS_MESSAGES.PHONE_NUMBER_IS_INVALID
         }
       },
       password: {
         notEmpty: { errorMessage: USERS_MESSAGES.PASSWORD_IS_REQUIRED },
-        isLength: {
-          options: { min: 6, max: 50 },
-          errorMessage: USERS_MESSAGES.PASSWORD_LENGTH_MUST_BE_FROM_6_TO_50
+        matches: {
+          options: passwordStrengthRegex,
+          errorMessage: USERS_MESSAGES.PASSWORD_MUST_INCLUDE_UPPER_SPECIAL_NUMBER
         }
       }
     },
