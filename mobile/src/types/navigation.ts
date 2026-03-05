@@ -1,0 +1,52 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+
+// ── Auth Stack ───────────────────────────────────────────────
+export type AuthStackParamList = {
+  Login: undefined;
+  RegisterSelectRole: undefined;
+  RegisterOwner: undefined;
+  RegisterStaff: undefined;
+  ForgotPasswordPhone: undefined;
+  ForgotPasswordOtp: { phone: string };
+  ForgotPasswordReset: { phone: string; otp: string };
+};
+
+// ── Main Tabs ────────────────────────────────────────────────
+export type MainTabsParamList = {
+  Home: undefined;
+};
+
+// ── Main Stack (feature screens) ─────────────────────────────
+export type MainStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabsParamList>;
+  Orders: undefined;
+  Sales: undefined;
+  Products: undefined;
+  Customers: undefined;
+  Staff: undefined;
+  Settings: undefined;
+  Support: undefined;
+  Notifications: undefined;
+};
+
+// ── Root Stack ───────────────────────────────────────────────
+export type RootStackParamList = {
+  Intro: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  Main: NavigatorScreenParams<MainStackParamList>;
+};
+
+// ── Screen props helpers ─────────────────────────────────────
+export type AuthScreenProps<T extends keyof AuthStackParamList> =
+  NativeStackScreenProps<AuthStackParamList, T>;
+
+export type MainTabScreenProps<T extends keyof MainTabsParamList> =
+  BottomTabScreenProps<MainTabsParamList, T>;
+
+export type MainStackScreenProps<T extends keyof MainStackParamList> =
+  NativeStackScreenProps<MainStackParamList, T>;
+
+export type RootScreenProps<T extends keyof RootStackParamList> =
+  NativeStackScreenProps<RootStackParamList, T>;
