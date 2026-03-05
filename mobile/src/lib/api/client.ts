@@ -1,6 +1,22 @@
-// Android thật: dùng IP LAN của máy tính, không dùng localhost
-// iOS Simulator / Android Emulator: có thể dùng localhost hoặc 10.0.2.2
-export const API_BASE_URL = 'http://192.168.10.134:3000/api';
+import Constants from 'expo-constants';
+
+/**
+ * Tự động lấy IP từ Metro bundler (hostUri) khi chạy dev.
+ * Không cần cấu hình gì — ai pull về chạy `npm start` là đúng IP của máy họ.
+ * Production: dùng EXPO_PUBLIC_API_BASE_URL trong .env hoặc fallback localhost.
+ */
+function resolveApiBaseUrl(): string {
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      return `http://${ip}:3000/api`;
+    }
+  }
+  return process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export class ApiError extends Error {
   constructor(

@@ -6,6 +6,18 @@ import { setRefreshTokenCallback } from '../lib/api/client';
 
 const AUTH_STORAGE_KEY = '@lopo_auth';
 
+/** Xóa auth khỏi storage và reset state — không gọi API */
+async function clearAuthLocally(
+  set: (state: Partial<AuthState>) => void,
+): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    set({ isAuthenticated: false, user: null, accessToken: null, refreshToken: null });
+  } catch (error) {
+    console.error('Error removing auth:', error);
+  }
+}
+
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
@@ -40,21 +52,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     const { accessToken, refreshToken } = get();
-    // Gọi API hủy token trên server (bỏ qua lỗi nếu mạng yếu / token hết hạn)
+    // Gọi API hủy token trên server trước khi xóa local
     if (accessToken && refreshToken) {
       try {
         await apiLogout(accessToken, refreshToken);
-      } catch (error) {
-        console.warn('API logout failed (ignored):', error);
+      } catch {
+        // Bỏ qua lỗi mạng hoặc token đã hết hạn — local state vẫn được xóa bên dưới
       }
     }
-    // Xóa local state trong mọi trường hợp
-    try {
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      set({ isAuthenticated: false, user: null, accessToken: null, refreshToken: null });
-    } catch (error) {
-      console.error('Error removing auth:', error);
-    }
+    await clearAuthLocally(set);
   },
 
   refreshTokens: async (): Promise<string | null> => {
@@ -68,10 +74,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       );
       set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
       return tokens.accessToken;
-    } catch (error) {
-      // Refresh thất bại → buộc logout
-      console.warn('Refresh token expired, logging out');
-      await get().logout();
+    } catch {
+      // Refresh token hết hạn → chỉ xóa local, không cố gọi API logout bằng token đã hết hạn
+      await clearAuthLocally(set);
       return null;
     }
   },
