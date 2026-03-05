@@ -12,6 +12,7 @@ export interface User {
 export interface AuthPayload {
   user: User;
   accessToken: string;
+  refreshToken?: string;
 }
 
 // ── Auth types / constants ───────────────────────────────────

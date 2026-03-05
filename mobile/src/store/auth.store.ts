@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, AuthPayload } from '../types';
+import { logout as apiLogout, refreshTokens as apiRefreshTokens } from '../features/auth/services/auth.service';
+import { setRefreshTokenCallback } from '../lib/api/client';
 
 const AUTH_STORAGE_KEY = '@lopo_auth';
 
@@ -8,42 +10,69 @@ interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   accessToken: string | null;
+  refreshToken: string | null;
   setAuth: (payload: AuthPayload) => Promise<void>;
   logout: () => Promise<void>;
+  refreshTokens: () => Promise<string | null>;
   hydrateAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   // State
   isAuthenticated: false,
   user: null,
   accessToken: null,
+  refreshToken: null,
 
   // Actions
   setAuth: async (payload: AuthPayload) => {
-    const { user, accessToken } = payload;
+    const { user, accessToken, refreshToken = null } = payload;
     try {
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user, accessToken }));
-      set({
-        isAuthenticated: true,
-        user,
-        accessToken,
-      });
+      await AsyncStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ user, accessToken, refreshToken }),
+      );
+      set({ isAuthenticated: true, user, accessToken, refreshToken });
     } catch (error) {
       console.error('Error saving auth:', error);
     }
   },
 
   logout: async () => {
+    const { accessToken, refreshToken } = get();
+    // Gọi API hủy token trên server (bỏ qua lỗi nếu mạng yếu / token hết hạn)
+    if (accessToken && refreshToken) {
+      try {
+        await apiLogout(accessToken, refreshToken);
+      } catch (error) {
+        console.warn('API logout failed (ignored):', error);
+      }
+    }
+    // Xóa local state trong mọi trường hợp
     try {
       await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      set({
-        isAuthenticated: false,
-        user: null,
-        accessToken: null,
-      });
+      set({ isAuthenticated: false, user: null, accessToken: null, refreshToken: null });
     } catch (error) {
       console.error('Error removing auth:', error);
+    }
+  },
+
+  refreshTokens: async (): Promise<string | null> => {
+    const { refreshToken } = get();
+    if (!refreshToken) return null;
+    try {
+      const tokens = await apiRefreshTokens(refreshToken);
+      await AsyncStorage.mergeItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }),
+      );
+      set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+      return tokens.accessToken;
+    } catch (error) {
+      // Refresh thất bại → buộc logout
+      console.warn('Refresh token expired, logging out');
+      await get().logout();
+      return null;
     }
   },
 
@@ -51,15 +80,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
-        const { user, accessToken } = JSON.parse(stored) as { user: User; accessToken: string };
-        set({
-          isAuthenticated: true,
-          user,
-          accessToken,
-        });
+        const { user, accessToken, refreshToken } = JSON.parse(stored) as {
+          user: User;
+          accessToken: string;
+          refreshToken: string | null;
+        };
+        set({ isAuthenticated: true, user, accessToken, refreshToken: refreshToken ?? null });
       }
     } catch (error) {
       console.error('Error hydrating auth:', error);
     }
   },
 }));
+
+// Đăng ký interceptor: khi apiRequest gặp 401, tự động lấy token mới từ store
+setRefreshTokenCallback(() => useAuthStore.getState().refreshTokens());
