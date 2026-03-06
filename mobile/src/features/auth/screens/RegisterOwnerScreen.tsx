@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { registerOwnerSchema, RegisterOwnerFormData } from '../../../lib/validation/auth.schema';
-import { registerOwner, type RegisterOwnerPayload } from '../services/auth.mock';
+import { registerOwner } from '../services/auth.service';
+import { ApiError } from '../../../lib/api/client';
 import type { AuthScreenProps } from '../../../types/navigation';
 
 type Props = AuthScreenProps<'RegisterOwner'>;
@@ -44,14 +45,27 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
   const onValid = async (data: RegisterOwnerFormData): Promise<void> => {
     setLoading(true);
     try {
-      await registerOwner(data as unknown as RegisterOwnerPayload);
-      // Đăng ký thành công -> chuyển về màn hình đăng nhập
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
-    } catch (error) {
+      await registerOwner(
+        data.storeName,
+        data.ownerName,
+        data.phone,
+        data.password,
+        data.confirmPassword,
+      );
+      Alert.alert('Đăng ký thành công', 'Vui lòng đăng nhập để tiếp tục', [
+        {
+          text: 'Đăng nhập',
+          onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }),
+        },
+      ]);
+    } catch (error: any) {
       console.error('Register owner error:', error);
+      if (error instanceof ApiError) {
+        const detail = error.getFieldErrors();
+        Alert.alert('Đăng ký thất bại', detail || 'Dữ liệu không hợp lệ');
+      } else {
+        Alert.alert('Đăng ký thất bại', error.message || 'Không thể kết nối đến máy chủ');
+      }
     } finally {
       setLoading(false);
     }

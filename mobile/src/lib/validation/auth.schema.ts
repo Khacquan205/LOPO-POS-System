@@ -39,10 +39,17 @@ export const registerOwnerSchema = z
     path: ['confirmPassword'],
   });
 
-export const registerStaffSchema = z.object({
-  fullName: z.string().min(1, 'Vui lòng nhập tên đầy đủ'),
-  phone: phoneValidation,
-});
+export const registerStaffSchema = z
+  .object({
+    fullName: z.string().min(1, 'Vui lòng nhập tên đầy đủ'),
+    phone: phoneValidation,
+    password: passwordValidation,
+    confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
+    path: ['confirmPassword'],
+  });
 
 export const forgotPasswordPhoneSchema = z.object({
   phone: phoneValidation,

@@ -15,8 +15,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { registerStaffSchema, RegisterStaffFormData } from '../../../lib/validation/auth.schema';
-import { registerStaff, type RegisterStaffPayload } from '../services/auth.mock';
-import { useAuthStore } from '../../../store/auth.store';
+import { registerStaff } from '../services/auth.service';
+import { ApiError } from '../../../lib/api/client';
 import type { AuthScreenProps } from '../../../types/navigation';
 
 type Props = AuthScreenProps<'RegisterStaff'>;
@@ -24,7 +24,6 @@ type Props = AuthScreenProps<'RegisterStaff'>;
 export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const setAuth = useAuthStore((s) => s.setAuth);
 
   const {
     control,
@@ -38,6 +37,8 @@ export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
     defaultValues: {
       fullName: '',
       phone: '',
+      password: '',
+      confirmPassword: '',
     },
   });
 
@@ -52,14 +53,25 @@ export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
   const onValid = async (data: RegisterStaffFormData): Promise<void> => {
     setLoading(true);
     try {
-      const result = await registerStaff(data as RegisterStaffPayload);
-      await setAuth(result);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' as any }],
-      });
+      await registerStaff(
+        data.fullName,
+        data.phone,
+        data.password,
+        data.confirmPassword,
+      );
+      Alert.alert('Đăng ký thành công', 'Vui lòng đăng nhập để tiếp tục', [
+        {
+          text: 'Đăng nhập',
+          onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }),
+        },
+      ]);
     } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Đăng ký thất bại');
+      if (err instanceof ApiError) {
+        const detail = err.getFieldErrors();
+        Alert.alert('Đăng ký thất bại', detail || 'Dữ liệu không hợp lệ');
+      } else {
+        Alert.alert('Lỗi', err.message || 'Không thể kết nối đến máy chủ');
+      }
     } finally {
       setLoading(false);
     }
@@ -120,6 +132,40 @@ export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={onChange}
                 onBlur={onBlur}
                 error={showError('phone')}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextField
+                label="Mật khẩu"
+                placeholder="Nhập mật khẩu"
+                leftIconName="lock-closed-outline"
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={showError('password')}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextField
+                label="Nhập lại mật khẩu"
+                placeholder="Xác nhận mật khẩu"
+                leftIconName="lock-closed-outline"
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                error={showError('confirmPassword')}
               />
             )}
           />

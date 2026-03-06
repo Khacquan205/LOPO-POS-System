@@ -7,7 +7,8 @@ import { Screen, Button, TextField, IconSquare, Divider } from '../../../ui/comp
 import { colors, spacing, typography } from '../../../ui/theme';
 import { loginSchema, LoginFormData } from '../../../lib/validation/auth.schema';
 import { useAuthStore } from '../../../store/auth.store';
-import { login } from '../services/auth.mock';
+import { login } from '../services/auth.service';
+import { ApiError } from '../../../lib/api/client';
 import type { AuthScreenProps } from '../../../types/navigation';
 
 type Props = AuthScreenProps<'Login'>;
@@ -51,7 +52,17 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       });
     } catch (error: any) {
       console.error('Login error:', error);
-      Alert.alert('Đăng nhập thất bại', error.message || 'Có lỗi xảy ra');
+      if (error instanceof ApiError) {
+        if (error.statusCode === 401) {
+          Alert.alert('Đăng nhập thất bại', 'Số điện thoại hoặc mật khẩu không đúng');
+        } else if (error.statusCode === 422) {
+          Alert.alert('Dữ liệu không hợp lệ', 'Vui lòng kiểm tra lại thông tin');
+        } else {
+          Alert.alert('Đăng nhập thất bại', error.message || 'Có lỗi xảy ra');
+        }
+      } else {
+        Alert.alert('Đăng nhập thất bại', error.message || 'Không thể kết nối đến máy chủ');
+      }
     } finally {
       setLoading(false);
     }
