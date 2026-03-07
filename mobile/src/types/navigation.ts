@@ -1,6 +1,9 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type {
+  CompositeScreenProps,
+  NavigatorScreenParams,
+} from "@react-navigation/native";
 
 // ── Auth Stack ───────────────────────────────────────────────
 export type AuthStackParamList = {
@@ -24,6 +27,7 @@ export type MainStackParamList = {
   Orders: undefined;
   Sales: undefined;
   Products: undefined;
+  CreateProduct: undefined;
   Customers: undefined;
   Staff: undefined;
   Settings: undefined;

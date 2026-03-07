@@ -1,8 +1,16 @@
-import React, { createContext, useContext } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { colors, spacing, typography, radius, shadow, fontFamily } from '../../ui/theme';
-import { RootNavigator } from '../navigation/RootNavigator';
+import React, { createContext, useContext } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  colors,
+  spacing,
+  typography,
+  radius,
+  shadow,
+  fontFamily,
+} from "../../ui/theme";
+import { RootNavigator } from "../navigation/RootNavigator";
+import { ToastProvider } from "../../ui/components";
 
 // Theme type
 interface Theme {
@@ -37,9 +45,11 @@ export const AppProviders: React.FC = () => {
   return (
     <ThemeContext.Provider value={theme}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
+        <ToastProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </ToastProvider>
       </SafeAreaProvider>
     </ThemeContext.Provider>
   );
