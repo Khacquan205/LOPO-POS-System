@@ -15,10 +15,6 @@ const categorySchema = new Schema(
     is_active: {
       type: Boolean,
       default: true
-    },
-    sort_order: {
-      type: Number,
-      default: 0
     }
   },
   {

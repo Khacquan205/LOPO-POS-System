@@ -1,10 +1,11 @@
+import { Request, Response, NextFunction } from 'express'
 import { checkSchema } from 'express-validator'
 import { USERS_MESSAGES } from '~/constants/messages.js'
 import { validate } from '~/utils/validation.js'
 import usersService from '~/services/users.services.js'
 import { verifyToken } from '~/utils/jwt.js'
 import { envConfig } from '~/config/index.js'
-import { TokenType } from '~/constants/enum.js'
+import { TokenType, UserRole } from '~/constants/enum.js'
 import { ErrorWithStatus } from './error.middlewares.js'
 import HTTP_STATUS from '~/constants/httpStatus.js'
 
@@ -158,3 +159,12 @@ export const refreshTokenValidator = validate(
     ['body']
   )
 )
+
+export const ownerOnlyValidator = (req: Request, res: Response, next: NextFunction) => {
+  if (req.decoded_authorization?.role !== UserRole.Owner) {
+    return res.status(HTTP_STATUS.FORBIDDEN).json({
+      message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS
+    })
+  }
+  return next()
+}

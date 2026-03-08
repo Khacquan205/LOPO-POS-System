@@ -10,11 +10,11 @@ const inventoryStockSchema = new Schema(
     product_id: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'products'
+      ref: 'products',
+      unique: true
     },
     on_hand: {
       type: Number,
-      required: true,
       default: 0,
       min: 0
     }
