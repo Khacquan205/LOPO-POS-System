@@ -21,6 +21,8 @@ export const USERS_MESSAGES = {
   USER_NOT_FOUND: 'Không tìm thấy người dùng',
   ONLY_OWNER_CAN_CREATE_STAFF: 'Chỉ chủ cửa hàng mới có quyền tạo nhân viên',
   PHONE_OR_PASSWORD_IS_INCORRECT: 'Số điện thoại hoặc mật khẩu không đúng',
+  ACCOUNT_IS_INACTIVE: 'Tài khoản đã bị vô hiệu hóa',
+  ACCOUNT_IS_BLOCKED: 'Tài khoản đã bị khóa',
   ACCESS_TOKEN_IS_REQUIRED: 'Access token là bắt buộc',
   REFRESH_TOKEN_IS_REQUIRED: 'Refresh token là bắt buộc',
   REFRESH_TOKEN_IS_INVALID: 'Refresh token không hợp lệ',

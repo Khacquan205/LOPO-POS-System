@@ -1,4 +1,4 @@
-import { apiRequest, decodeJwtPayload } from '../../../lib/api/client';
+import { apiRequest } from '../../../lib/api/client';
 import type { AuthPayload } from '../../../types';
 
 // ── Request / Response shapes ─────────────────────────────────
@@ -24,6 +24,14 @@ export interface RegisterStaffRequest {
 interface LoginResult {
   access_token: string;
   refresh_token: string;
+  user: {
+    _id: string;
+    full_name: string;
+    phone_number: string;
+    role: 'owner' | 'staff';
+    store_id: string | null;
+    store_name: string | null;
+  };
 }
 
 interface LoginResponse {
@@ -67,10 +75,7 @@ interface RegisterStaffResponse {
   result: RegisterStaffResult;
 }
 
-interface JwtPayload {
-  user_id: string;
-  role: 'owner' | 'staff' | 'admin';
-}
+
 
 // ── Login ─────────────────────────────────────────────────────
 
@@ -82,17 +87,16 @@ export async function login(phone: string, password: string): Promise<AuthPayloa
     body: JSON.stringify(body),
   });
 
-  const { access_token, refresh_token } = data.result;
-  const payload = decodeJwtPayload<JwtPayload>(access_token);
+  const { access_token, refresh_token, user } = data.result;
 
   return {
     user: {
-      id: payload.user_id ?? '',
-      name: '',
-      phone,
-      role: payload.role ?? 'staff',
-      storeId: null,
-      storeName: null,
+      id: user._id,
+      name: user.full_name,
+      phone: user.phone_number,
+      role: user.role,
+      storeId: user.store_id,
+      storeName: user.store_name,
     },
     accessToken: access_token,
     refreshToken: refresh_token,
