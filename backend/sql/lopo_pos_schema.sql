@@ -32,8 +32,6 @@ CREATE TABLE `Stores` (
   `store_id` varchar(24),
   `owner_id` varchar(24),
   `name` varchar(255),
-  `phone` varchar(20),
-  `is_active` tinyint,
   `created_at` datetime,
   `updated_at` datetime,
   PRIMARY KEY (`store_id`),

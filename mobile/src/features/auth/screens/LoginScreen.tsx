@@ -55,6 +55,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       if (error instanceof ApiError) {
         if (error.statusCode === 401) {
           Alert.alert('Đăng nhập thất bại', 'Số điện thoại hoặc mật khẩu không đúng');
+        } else if (error.statusCode === 403) {
+          Alert.alert('Tài khoản bị khóa', error.message || 'Tài khoản của bạn đã bị vô hiệu hóa hoặc bị khóa');
         } else if (error.statusCode === 422) {
           Alert.alert('Dữ liệu không hợp lệ', 'Vui lòng kiểm tra lại thông tin');
         } else {
