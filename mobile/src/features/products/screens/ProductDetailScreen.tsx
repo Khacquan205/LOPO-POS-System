@@ -218,7 +218,10 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       onRequestClose={onCancel}
     >
       <Pressable style={confirmStyles.overlay} onPress={onCancel}>
-        <Pressable style={confirmStyles.dialog} onPress={(e) => e.stopPropagation()}>
+        <Pressable
+          style={confirmStyles.dialog}
+          onPress={(e) => e.stopPropagation()}
+        >
           <View style={confirmStyles.iconOuterCircle}>
             <View style={confirmStyles.iconInnerCircle}>
               <Ionicons name="information" size={24} color={colors.white} />

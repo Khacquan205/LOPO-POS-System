@@ -19,7 +19,10 @@ import type { MainStackScreenProps } from "../../../types/navigation";
 
 type Props = MainStackScreenProps<"Products">;
 
-export const ProductManagementScreen: React.FC<Props> = ({ route, navigation }) => {
+export const ProductManagementScreen: React.FC<Props> = ({
+  route,
+  navigation,
+}) => {
   const products = useProductsStore((state) => state.products);
   const removeProducts = useProductsStore((state) => state.removeProducts);
   const [searchQuery, setSearchQuery] = useState("");
