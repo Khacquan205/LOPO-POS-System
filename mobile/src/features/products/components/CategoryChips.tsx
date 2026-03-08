@@ -1,6 +1,6 @@
 import React from "react";
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from "react-native";
-import { colors, spacing, typography } from "../../../ui/theme";
+import { colors, spacing, typography, radius } from "../../../ui/theme";
 
 // ============================================================================
 // TYPES
@@ -17,12 +17,14 @@ interface CategoryChipProps {
   color: string;
   isSelected?: boolean;
   onPress?: () => void;
+  compact?: boolean;
 }
 
 interface CategoryChipsProps {
   categories: Category[];
   selectedId?: string;
   onSelectCategory?: (id: string | undefined) => void;
+  compact?: boolean;
 }
 
 // ============================================================================
@@ -34,11 +36,16 @@ const CategoryChip: React.FC<CategoryChipProps> = ({
   color,
   isSelected = false,
   onPress,
+  compact = false,
 }) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.categoryChip, { backgroundColor: color }]}
+      style={[
+        styles.categoryChip,
+        compact ? styles.categoryChipCompact : styles.categoryChipDefault,
+        { backgroundColor: color },
+      ]}
     >
       <Text style={styles.categoryChipText}>{label}</Text>
     </TouchableOpacity>
@@ -53,6 +60,7 @@ export const CategoryChips: React.FC<CategoryChipsProps> = ({
   categories,
   selectedId,
   onSelectCategory,
+  compact = false,
 }) => {
   return (
     <ScrollView
@@ -66,6 +74,7 @@ export const CategoryChips: React.FC<CategoryChipsProps> = ({
           key={category.id}
           label={category.name}
           color={category.color}
+          compact={compact}
           isSelected={selectedId === category.id}
           onPress={() =>
             onSelectCategory?.(
@@ -94,11 +103,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   categoryChip: {
+    justifyContent: "center",
+    borderRadius: radius.full,
+    alignSelf: "flex-start",
+  },
+  categoryChipDefault: {
     height: 44,
     paddingHorizontal: spacing.lg,
-    justifyContent: "center",
-    borderRadius: 20,
-    alignSelf: "flex-start",
+  },
+  categoryChipCompact: {
+    height: 36,
+    paddingHorizontal: spacing.md,
   },
   categoryChipText: {
     ...typography.bodySmall,

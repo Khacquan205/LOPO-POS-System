@@ -5,12 +5,14 @@ import { colors, spacing, typography } from "../../../../ui/theme";
 
 interface FooterActionsProps {
   onCancelPress?: () => void;
-  onCreatePress?: () => void;
+  onPrimaryPress?: () => void;
+  primaryLabel?: string;
 }
 
 export const FooterActions: React.FC<FooterActionsProps> = ({
   onCancelPress,
-  onCreatePress,
+  onPrimaryPress,
+  primaryLabel = "Tạo mới",
 }) => {
   return (
     <View style={styles.container}>
@@ -21,8 +23,8 @@ export const FooterActions: React.FC<FooterActionsProps> = ({
       </TouchableOpacity>
 
       {/* Create Button */}
-      <TouchableOpacity onPress={onCreatePress} style={styles.createButton}>
-        <Text style={styles.createText}>Tạo mới</Text>
+      <TouchableOpacity onPress={onPrimaryPress} style={styles.createButton}>
+        <Text style={styles.createText}>{primaryLabel}</Text>
       </TouchableOpacity>
     </View>
   );

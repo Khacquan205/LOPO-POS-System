@@ -10,6 +10,8 @@ import { SettingsScreen } from "../../features/settings/screens/SettingsScreen";
 import { SupportScreen } from "../../features/support/screens/SupportScreen";
 import { NotificationsScreen } from "../../features/notifications/screens/NotificationsScreen";
 import { CreateProductScreen } from "../../features/products/screens/CreateProductScreen";
+import { ProductDetailScreen } from "../../features/products/screens/ProductDetailScreen";
+import { EditProductScreen } from "../../features/products/screens/EditProductScreen";
 import type { MainStackParamList } from "../../types/navigation";
 import { ProductManagementScreen } from "~/features/products/screens/ProductManagementScreen";
 
@@ -27,6 +29,8 @@ export const MainStack: React.FC = () => {
       <Stack.Screen name="Sales" component={SalesScreen} />
       <Stack.Screen name="Products" component={ProductManagementScreen} />
       <Stack.Screen name="CreateProduct" component={CreateProductScreen} />
+      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <Stack.Screen name="EditProduct" component={EditProductScreen} />
       <Stack.Screen name="Customers" component={CustomersScreen} />
       <Stack.Screen name="Staff" component={StaffScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

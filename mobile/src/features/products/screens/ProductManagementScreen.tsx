@@ -1,29 +1,56 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { View, FlatList, SafeAreaView, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 import { Header } from "../components/Header";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryChips } from "../components/CategoryChips";
 import { ProductItem } from "../components/ProductItem";
 import { FloatingActionButton } from "../components/FloatingActionButton";
-import { SuccessToast, useToast } from "../../../ui/components";
-import { categoriesMock, productsMock } from "../mock/productManagement.mock";
-import type { MainStackParamList } from "../../../types/navigation";
+import { FilterBottomSheet } from "../components/FilterBottomSheet";
+import { BulkActionBar } from "../components/BulkActionBar";
+import { SuccessToast } from "../../../ui/components";
+import { categoriesMock } from "../mock/productManagement.mock";
+import { useProductsStore } from "../store/products.store";
+import type { MainStackScreenProps } from "../../../types/navigation";
 
 // ============================================================================
 // MAIN SCREEN COMPONENT
 // ============================================================================
 
-export const ProductManagementScreen: React.FC = () => {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { toastVisible, toastMessage, hideToast } = useToast();
+type Props = MainStackScreenProps<"Products">;
+
+export const ProductManagementScreen: React.FC<Props> = ({ route, navigation }) => {
+  const products = useProductsStore((state) => state.products);
+  const removeProducts = useProductsStore((state) => state.removeProducts);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>();
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [toastVisible, setToastVisible] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.showDeleteSuccessToast) {
+        setToastVisible(true);
+        navigation.setParams({ showDeleteSuccessToast: undefined });
+      }
+    }, [route.params?.showDeleteSuccessToast, navigation]),
+  );
+
+  const categoryOptions = useMemo(
+    () => [
+      { id: "all", name: "Tất cả", color: "#EFA442" },
+      { id: "1", name: "Bánh kẹo", color: "#FFA500" },
+      { id: "2", name: "Thức uống", color: "#20B2AA" },
+      { id: "3", name: "Văn phòng phẩm", color: "#228B22" },
+      { id: "4", name: "Vệ sinh cá nhân", color: "#DA70D6" },
+    ],
+    [],
+  );
 
   const filteredProducts = useMemo(() => {
-    let filtered = productsMock;
+    let filtered = products;
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -32,7 +59,7 @@ export const ProductManagementScreen: React.FC = () => {
     }
 
     // Filter by category
-    if (selectedCategoryId) {
+    if (selectedCategoryId && selectedCategoryId !== "all") {
       filtered = filtered.filter(
         (p) =>
           categoriesMock.find((c) => c.id === selectedCategoryId)?.name ===
@@ -41,19 +68,60 @@ export const ProductManagementScreen: React.FC = () => {
     }
 
     return filtered;
-  }, [searchQuery, selectedCategoryId]);
+  }, [searchQuery, selectedCategoryId, products]);
 
   const handleBackPress = () => {
-    // Navigation back logic - to be implemented by router
-    console.log("Back pressed");
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("MainTabs", { screen: "Home" });
   };
 
   const handleFilterPress = () => {
-    console.log("Filter pressed");
+    setFilterVisible(true);
+  };
+
+  const handleCloseFilter = () => {
+    setFilterVisible(false);
   };
 
   const handleFABPress = () => {
     navigation.navigate("CreateProduct");
+  };
+
+  const handleOpenProductDetail = (productId: string) => {
+    navigation.navigate("ProductDetail", { productId });
+  };
+
+  const handleEnterSelectionMode = (productId: string) => {
+    setIsSelectionMode(true);
+    setSelectedIds((prev) =>
+      prev.includes(productId) ? prev : [...prev, productId],
+    );
+  };
+
+  const handleToggleSelection = (productId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
+  };
+
+  const handleCancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectedIds([]);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+
+    removeProducts(selectedIds);
+    setToastVisible(true);
+    setIsSelectionMode(false);
+    setSelectedIds([]);
   };
 
   return (
@@ -66,36 +134,73 @@ export const ProductManagementScreen: React.FC = () => {
         />
 
         {/* Search Bar */}
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          iconPosition="right"
+        />
 
         {/* Category Chips */}
         <CategoryChips
-          categories={categoriesMock}
+          categories={categoryOptions}
           selectedId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
+          compact
         />
 
         {/* Product List */}
         <FlatList
           data={filteredProducts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductItem product={item} />}
+          renderItem={({ item }) => (
+            <ProductItem
+              product={item}
+              selectionMode={isSelectionMode}
+              selected={selectedIds.includes(item.id)}
+              onLongPress={() =>
+                isSelectionMode
+                  ? handleToggleSelection(item.id)
+                  : handleEnterSelectionMode(item.id)
+              }
+              onPress={
+                isSelectionMode
+                  ? () => handleToggleSelection(item.id)
+                  : () => handleOpenProductDetail(item.id)
+              }
+              onToggleSelect={() => handleToggleSelection(item.id)}
+            />
+          )}
           scrollEnabled={true}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            isSelectionMode && styles.listContentSelection,
+          ]}
         />
       </View>
 
       {/* Floating Action Button */}
       <FloatingActionButton onPress={handleFABPress} />
 
+      {/* Bulk Action Bar */}
+      {isSelectionMode && (
+        <BulkActionBar
+          selectedCount={selectedIds.length}
+          onDeletePress={handleBulkDelete}
+          onCancelPress={handleCancelSelection}
+        />
+      )}
+
       {/* Success Toast */}
       <SuccessToast
         visible={toastVisible}
-        message={toastMessage}
-        onHide={hideToast}
+        message="Xóa sản phẩm thành công!"
+        onHide={() => setToastVisible(false)}
       />
+
+      {/* Filter Bottom Sheet */}
+      <FilterBottomSheet visible={filterVisible} onClose={handleCloseFilter} />
     </SafeAreaView>
   );
 };
@@ -115,5 +220,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 0,
+  },
+  listContentSelection: {
+    paddingBottom: 104,
   },
 });

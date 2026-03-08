@@ -26,8 +26,10 @@ export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
   Orders: undefined;
   Sales: undefined;
-  Products: undefined;
+  Products: { showDeleteSuccessToast?: boolean } | undefined;
   CreateProduct: undefined;
+  ProductDetail: { productId: string; edited?: boolean };
+  EditProduct: { productId: string };
   Customers: undefined;
   Staff: undefined;
   Settings: undefined;

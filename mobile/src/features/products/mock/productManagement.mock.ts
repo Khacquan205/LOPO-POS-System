@@ -15,6 +15,7 @@ export interface Product {
   price: number;
   category: string;
   categoryColor: string;
+  status: "active" | "inactive";
   image?: string;
 }
 
@@ -41,6 +42,7 @@ export const productsMock: Product[] = [
     price: 4000,
     category: "Bánh kẹo",
     categoryColor: "#FFA500",
+    status: "active",
   },
   {
     id: "2",
@@ -48,20 +50,23 @@ export const productsMock: Product[] = [
     price: 4000,
     category: "Bánh kẹo",
     categoryColor: "#FFA500",
+    status: "active",
   },
   {
     id: "3",
-    name: "Nước suối Lavie",
+    name: "Nước suối lavie",
     price: 4000,
     category: "Thức uống",
     categoryColor: "#20B2AA",
+    status: "active",
   },
   {
     id: "4",
-    name: "Lon Coca Cola",
+    name: "Lon CocaCola",
     price: 4000,
     category: "Thức uống",
     categoryColor: "#20B2AA",
+    status: "active",
   },
   {
     id: "5",
@@ -69,6 +74,7 @@ export const productsMock: Product[] = [
     price: 4000,
     category: "Thức uống",
     categoryColor: "#20B2AA",
+    status: "active",
   },
   {
     id: "6",
@@ -76,6 +82,7 @@ export const productsMock: Product[] = [
     price: 4000,
     category: "Vệ sinh cá nhân",
     categoryColor: "#DA70D6",
+    status: "active",
   },
   {
     id: "7",
@@ -83,6 +90,7 @@ export const productsMock: Product[] = [
     price: 4000,
     category: "Vệ sinh cá nhân",
     categoryColor: "#DA70D6",
+    status: "active",
   },
 ];
 

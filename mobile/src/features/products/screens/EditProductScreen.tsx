@@ -1,39 +1,44 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ScrollView, SafeAreaView, StyleSheet } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
 import { FooterActions } from "../components/createProduct/FooterActions";
 import { CategoryPickerBottomSheet } from "../components/CategoryPickerBottomSheet";
 import { AddCategoryBottomSheet } from "../components/AddCategoryBottomSheet";
-import { useToast } from "../../../ui/components";
 import { Category } from "../mock/productManagement.mock";
 import { useProductsStore } from "../store/products.store";
+import type { MainStackScreenProps } from "../../../types/navigation";
 
-// ============================================================================
-// MAIN SCREEN COMPONENT
-// ============================================================================
+const HERO_IMAGE_URI =
+  "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
 
-export const CreateProductScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const { showSuccessToast } = useToast();
-  const addProduct = useProductsStore((state) => state.addProduct);
-  const [productName, setProductName] = useState("");
-  const [productPrice, setProductPrice] = useState("");
-  const [productCategory, setProductCategory] = useState("");
-  const [barcode, setBarcode] = useState("");
+type Props = MainStackScreenProps<"EditProduct">;
+
+export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
+  const products = useProductsStore((state) => state.products);
+  const updateProduct = useProductsStore((state) => state.updateProduct);
+
+  const editingProduct = useMemo(
+    () => products.find((item) => item.id === route.params.productId),
+    [products, route.params.productId],
+  );
+
+  const [productName, setProductName] = useState(
+    editingProduct?.name ?? "Bánh mì",
+  );
+  const [productPrice, setProductPrice] = useState(
+    editingProduct
+      ? new Intl.NumberFormat("vi-VN").format(editingProduct.price)
+      : "4,000",
+  );
+  const [productCategory, setProductCategory] = useState(
+    editingProduct?.category ?? "Bánh kẹo",
+  );
+  const [barcode, setBarcode] = useState("6756756800");
   const [manageInventory, setManageInventory] = useState(true);
-  const [inventory, setInventory] = useState("");
+  const [inventory, setInventory] = useState("67");
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
-
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
-
-  const handleSelectImage = () => {
-    console.log("Select image pressed");
-  };
 
   const handleSelectCategory = () => {
     setShowCategoryPicker(true);
@@ -57,35 +62,20 @@ export const CreateProductScreen: React.FC = () => {
     setShowAddCategory(false);
   };
 
-  const handleScanBarcode = () => {
-    console.log("Scan barcode pressed");
-  };
-
-  const handleCancel = () => {
-    navigation.goBack();
-  };
-
-  const handleCreate = () => {
+  const handleSave = () => {
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
 
-    addProduct({
+    updateProduct(route.params.productId, {
       name: productName,
       price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
       category: productCategory,
     });
 
-    console.log("Create product pressed", {
-      productName,
-      productPrice,
-      productCategory,
-      barcode,
-      manageInventory,
-      inventory,
+    // Navigate back with edited flag to trigger success toast
+    navigation.navigate("ProductDetail", {
+      productId: route.params.productId,
+      edited: true,
     });
-
-    // Show success toast and navigate back
-    showSuccessToast("Tạo mới thành công!");
-    navigation.goBack();
   };
 
   return (
@@ -94,10 +84,10 @@ export const CreateProductScreen: React.FC = () => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        {/* Image Picker Header */}
         <ImagePickerHeader
-          onBackPress={handleBackPress}
-          onSelectImagePress={handleSelectImage}
+          imageUri={HERO_IMAGE_URI}
+          onBackPress={() => navigation.goBack()}
+          onSelectImagePress={() => console.log("Select image pressed")}
         />
 
         <ProductForm
@@ -109,22 +99,20 @@ export const CreateProductScreen: React.FC = () => {
           onPressSelectCategory={handleSelectCategory}
           barcode={barcode}
           onChangeBarcode={setBarcode}
-          onPressScanBarcode={handleScanBarcode}
+          onPressScanBarcode={() => console.log("Scan barcode pressed")}
           manageInventory={manageInventory}
           onChangeManageInventory={setManageInventory}
           inventory={inventory}
           onChangeInventory={setInventory}
         />
 
-        {/* Footer Actions */}
         <FooterActions
-          onCancelPress={handleCancel}
-          onPrimaryPress={handleCreate}
-          primaryLabel="Tạo mới"
+          onCancelPress={() => navigation.goBack()}
+          onPrimaryPress={handleSave}
+          primaryLabel="Lưu"
         />
       </ScrollView>
 
-      {/* Category Picker Bottom Sheet */}
       <CategoryPickerBottomSheet
         visible={showCategoryPicker}
         onClose={() => setShowCategoryPicker(false)}
@@ -141,10 +129,6 @@ export const CreateProductScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-// ============================================================================
-// STYLES
-// ============================================================================
 
 const styles = StyleSheet.create({
   safeArea: {

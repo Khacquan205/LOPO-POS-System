@@ -10,6 +10,7 @@ import { colors, spacing, typography } from "../../../ui/theme";
 interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
+  iconPosition?: "left" | "right";
 }
 
 // ============================================================================
@@ -19,15 +20,18 @@ interface SearchBarProps {
 export const SearchBar: React.FC<SearchBarProps> = ({
   value,
   onChangeText,
+  iconPosition = "left",
 }) => {
   return (
     <View style={styles.searchContainer}>
-      <Ionicons
-        name="search"
-        size={20}
-        color={colors.textSecondary}
-        style={styles.searchIcon}
-      />
+      {iconPosition === "left" && (
+        <Ionicons
+          name="search"
+          size={20}
+          color={colors.textSecondary}
+          style={styles.searchIconLeft}
+        />
+      )}
       <TextInput
         style={styles.searchInput}
         value={value}
@@ -35,6 +39,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         placeholder="Nhập tên sản phẩm"
         placeholderTextColor={colors.textSecondary}
       />
+      {iconPosition === "right" && (
+        <Ionicons
+          name="search"
+          size={20}
+          color={colors.textSecondary}
+          style={styles.searchIconRight}
+        />
+      )}
     </View>
   );
 };
@@ -54,8 +66,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEEEEE",
     borderRadius: 12,
   },
-  searchIcon: {
+  searchIconLeft: {
     marginRight: spacing.sm,
+  },
+  searchIconRight: {
+    marginLeft: spacing.sm,
   },
   searchInput: {
     flex: 1,
