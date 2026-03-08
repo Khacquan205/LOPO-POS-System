@@ -76,12 +76,12 @@ const openApiSpec = {
           password: {
             type: 'string',
             minLength: 6,
-            example: '123456'
+            example: 'Abc123@'
           },
           confirm_password: {
             type: 'string',
             minLength: 6,
-            example: '123456'
+            example: 'Abc123@'
           }
         }
       },
@@ -100,12 +100,12 @@ const openApiSpec = {
           password: {
             type: 'string',
             minLength: 6,
-            example: '123456'
+            example: 'Abc123@'
           },
           confirm_password: {
             type: 'string',
             minLength: 6,
-            example: '123456'
+            example: 'Abc123@'
           }
         }
       },
@@ -120,7 +120,7 @@ const openApiSpec = {
           password: {
             type: 'string',
             minLength: 6,
-            example: '123456'
+            example: 'Abc123@'
           }
         }
       },
@@ -238,30 +238,10 @@ const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'Đăng ký chủ cửa hàng thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Đăng ký chủ cửa hàng thành công' },
-                    result: {
-                      $ref: '#/components/schemas/RegisterOwnerResult'
-                    }
-                  }
-                }
-              }
-            }
+            description: 'Đăng ký chủ cửa hàng thành công'
           },
           '422': {
-            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
+            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại'
           }
         }
       }
@@ -283,30 +263,10 @@ const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'Đăng ký tài khoản nhân viên thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Đăng ký tài khoản nhân viên thành công' },
-                    result: {
-                      $ref: '#/components/schemas/RegisterStaffResult'
-                    }
-                  }
-                }
-              }
-            }
+            description: 'Đăng ký tài khoản nhân viên thành công'
           },
           '422': {
-            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
+            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại'
           }
         }
       }
@@ -329,50 +289,16 @@ const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'Tạo tài khoản nhân viên thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Tạo tài khoản nhân viên thành công' },
-                    result: {
-                      $ref: '#/components/schemas/RegisterStaffResult'
-                    }
-                  }
-                }
-              }
-            }
+            description: 'Tạo tài khoản nhân viên thành công'
           },
           '401': {
-            description: 'Thiếu hoặc sai access token',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
+            description: 'Thiếu hoặc sai access token'
           },
           '403': {
-            description: 'Không phải owner',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
+            description: 'Không phải owner'
           },
           '422': {
-            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại',
-            content: {
-              'application/json': {
-                schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
+            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại'
           }
         }
       }
@@ -393,34 +319,13 @@ const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Đăng nhập thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Đăng nhập thành công' },
-                    result: { $ref: '#/components/schemas/LoginResult' }
-                  }
-                }
-              }
-            }
+            description: 'Đăng nhập thành công'
           },
           '401': {
-            description: 'Sai số điện thoại hoặc mật khẩu',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Sai số điện thoại hoặc mật khẩu'
           },
           '422': {
-            description: 'Dữ liệu không hợp lệ',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Dữ liệu không hợp lệ'
           }
         }
       }
@@ -443,33 +348,13 @@ const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Đăng xuất thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Đăng xuất thành công' }
-                  }
-                }
-              }
-            }
+            description: 'Đăng xuất thành công'
           },
           '401': {
-            description: 'Thiếu hoặc sai access token',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Thiếu hoặc sai access token'
           },
           '422': {
-            description: 'Refresh token không hợp lệ',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Refresh token không hợp lệ'
           }
         }
       }
@@ -490,28 +375,10 @@ const openApiSpec = {
         },
         responses: {
           '200': {
-            description: 'Làm mới token thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Làm mới token thành công' },
-                    result: {
-                      $ref: '#/components/schemas/RefreshTokenResult'
-                    }
-                  }
-                }
-              }
-            }
+            description: 'Làm mới token thành công'
           },
           '422': {
-            description: 'Refresh token không hợp lệ',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Refresh token không hợp lệ'
           }
         }
       }
@@ -523,34 +390,13 @@ const openApiSpec = {
         security: [{ bearerAuth: [] }],
         responses: {
           '200': {
-            description: 'Lấy thông tin thành công',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    message: { type: 'string', example: 'Lấy thông tin người dùng thành công' },
-                    result: { $ref: '#/components/schemas/MeResult' }
-                  }
-                }
-              }
-            }
+            description: 'Lấy thông tin thành công'
           },
           '401': {
-            description: 'Thiếu hoặc sai access token',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Thiếu hoặc sai access token'
           },
           '404': {
-            description: 'Không tìm thấy người dùng',
-            content: {
-              'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
-              }
-            }
+            description: 'Không tìm thấy người dùng'
           }
         }
       }
