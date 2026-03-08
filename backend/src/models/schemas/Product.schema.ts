@@ -17,11 +17,6 @@ const productSchema = new Schema(
       required: true,
       trim: true
     },
-    sku: {
-      type: String,
-      trim: true,
-      default: null
-    },
     barcode: {
       type: String,
       trim: true,
@@ -30,11 +25,6 @@ const productSchema = new Schema(
     price: {
       type: Number,
       required: true,
-      min: 0
-    },
-    cost_price: {
-      type: Number,
-      default: 0,
       min: 0
     },
     image_url: {

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Do uong",
+    "is_active": true
+  },
+  {
+    "name": "Do an nhanh",
+    "is_active": true
+  },
+  {
+    "name": "Do dong lanh",
+    "is_active": true
+  },
+  {
+    "name": "Rau cu qua",
+    "is_active": true
+  },
+  {
+    "name": "Thit ca hai san",
+    "is_active": true
+  },
+  {
+    "name": "Banh keo",
+    "is_active": true
+  },
+  {
+    "name": "Hoa my pham",
+    "is_active": true
+  },
+  {
+    "name": "Do gia dung",
+    "is_active": true
+  },
+  {
+    "name": "Van phong pham",
+    "is_active": true
+  },
+  {
+    "name": "Khac",
+    "is_active": true
+  }
+]
