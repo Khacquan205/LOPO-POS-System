@@ -5,6 +5,10 @@ import { MainTabs } from "./MainTabs";
 import { OrdersScreen } from "../../features/orders/screens/OrdersScreen";
 import { SalesScreen } from "../../features/sales/screens/SalesScreen";
 import { CustomersScreen } from "../../features/customers/screens/CustomersScreen";
+import { CreateCustomerScreen } from "../../features/customers/screens/CreateCustomerScreen";
+import { EditCustomerScreen } from "../../features/customers/screens/EditCustomerScreen";
+import { CustomerDetailScreen } from "../../features/customers/screens/CustomerDetailScreen";
+import { PurchaseHistoryScreen } from "../../features/customers/screens/PurchaseHistoryScreen";
 import { StaffScreen } from "../../features/staff/screens/StaffScreen";
 import { SettingsScreen } from "../../features/settings/screens/SettingsScreen";
 import { SupportScreen } from "../../features/support/screens/SupportScreen";
@@ -32,6 +36,10 @@ export const MainStack: React.FC = () => {
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="EditProduct" component={EditProductScreen} />
       <Stack.Screen name="Customers" component={CustomersScreen} />
+      <Stack.Screen name="CreateCustomer" component={CreateCustomerScreen} />
+      <Stack.Screen name="EditCustomer" component={EditCustomerScreen} />
+      <Stack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
+      <Stack.Screen name="PurchaseHistory" component={PurchaseHistoryScreen} />
       <Stack.Screen name="Staff" component={StaffScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />

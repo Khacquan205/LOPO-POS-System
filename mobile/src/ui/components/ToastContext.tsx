@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { SuccessToast } from "./SuccessToast";
 
 // ============================================================================
 // TYPES
@@ -43,6 +44,11 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
       value={{ showSuccessToast, hideToast, toastVisible, toastMessage }}
     >
       {children}
+      <SuccessToast
+        visible={toastVisible}
+        message={toastMessage}
+        onHide={hideToast}
+      />
     </ToastContext.Provider>
   );
 };
