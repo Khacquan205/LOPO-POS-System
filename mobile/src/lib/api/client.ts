@@ -59,15 +59,29 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { token, headers, _isRetry, ...rest } = options;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers as Record<string, string>),
-    },
-    ...rest,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 giây timeout
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(headers as Record<string, string>),
+      },
+      signal: controller.signal,
+      ...rest,
+    });
+  } catch (err: unknown) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiError(0, "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng hoặc địa chỉ server.");
+    }
+    throw new ApiError(0, "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.");
+  }
+  clearTimeout(timeoutId);
 
   const json = await response.json();
 

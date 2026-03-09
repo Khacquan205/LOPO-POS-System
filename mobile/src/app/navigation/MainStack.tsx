@@ -6,6 +6,11 @@ import { OrdersScreen } from "../../features/orders/screens/OrdersScreen";
 import { SalesScreen } from "../../features/sales/screens/SalesScreen";
 import { CustomersScreen } from "../../features/customers/screens/CustomersScreen";
 import { StaffScreen } from "../../features/staff/screens/StaffScreen";
+import { StaffDetailScreen } from "../../features/staff/screens/StaffDetailScreen";
+import { EditStaffScreen } from "../../features/staff/screens/EditStaffScreen";
+import { CreateStaffScreen } from "../../features/staff/screens/CreateStaffScreen";
+import { StaffApprovalScreen } from "../../features/staff/screens/StaffApprovalScreen";
+import { StaffApprovalDetailScreen } from "../../features/staff/screens/StaffApprovalDetailScreen";
 import { SettingsScreen } from "../../features/settings/screens/SettingsScreen";
 import { SupportScreen } from "../../features/support/screens/SupportScreen";
 import { NotificationsScreen } from "../../features/notifications/screens/NotificationsScreen";
@@ -33,6 +38,11 @@ export const MainStack: React.FC = () => {
       <Stack.Screen name="EditProduct" component={EditProductScreen} />
       <Stack.Screen name="Customers" component={CustomersScreen} />
       <Stack.Screen name="Staff" component={StaffScreen} />
+      <Stack.Screen name="StaffDetail" component={StaffDetailScreen} />
+      <Stack.Screen name="EditStaff" component={EditStaffScreen} />
+      <Stack.Screen name="CreateStaff" component={CreateStaffScreen} />
+      <Stack.Screen name="StaffApproval" component={StaffApprovalScreen} />
+      <Stack.Screen name="StaffApprovalDetail" component={StaffApprovalDetailScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

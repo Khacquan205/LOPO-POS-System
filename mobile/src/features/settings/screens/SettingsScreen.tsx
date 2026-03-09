@@ -1,64 +1,104 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Switch, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 
-interface SettingItem {
-  id: string;
-  title: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  description?: string;
-}
+type AfterLoginScreen = 'home' | 'sales';
+type AfterPaymentScreen = 'home' | 'sales' | 'orders';
 
-const settingsItems: SettingItem[] = [
-  { id: '1', title: 'Thông tin cửa hàng', icon: 'storefront-outline', description: 'Tên, địa chỉ, logo' },
-  { id: '2', title: 'Máy in', icon: 'print-outline', description: 'Cài đặt máy in hóa đơn' },
-  { id: '3', title: 'Thanh toán', icon: 'card-outline', description: 'Phương thức thanh toán' },
-  { id: '4', title: 'Thuế & Phí', icon: 'receipt-outline', description: 'VAT, phí dịch vụ' },
-  { id: '5', title: 'Thông báo', icon: 'notifications-outline', description: 'Cài đặt thông báo' },
-  { id: '6', title: 'Bảo mật', icon: 'shield-outline', description: 'Mật khẩu, xác thực' },
-  { id: '7', title: 'Ngôn ngữ', icon: 'language-outline', description: 'Tiếng Việt' },
-  { id: '8', title: 'Giới thiệu', icon: 'information-circle-outline', description: 'Phiên bản 1.0.0' },
+const AFTER_LOGIN_OPTIONS: { value: AfterLoginScreen; label: string }[] = [
+  { value: 'home', label: 'Trang chủ' },
+  { value: 'sales', label: 'Bán hàng' },
+];
+
+const AFTER_PAYMENT_OPTIONS: { value: AfterPaymentScreen; label: string }[] = [
+  { value: 'home', label: 'Trang chủ' },
+  { value: 'sales', label: 'Bán hàng' },
+  { value: 'orders', label: 'Đơn hàng' },
 ];
 
 export const SettingsScreen: React.FC = () => {
-  const handleSettingPress = (item: SettingItem): void => {
-    // TODO: Navigate to specific setting
-    console.log('Setting pressed:', item.title);
-  };
-
-  const renderItem = ({ item }: { item: SettingItem }) => (
-    <TouchableOpacity
-      style={styles.settingItem}
-      onPress={() => handleSettingPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.iconContainer}>
-        <Ionicons name={item.icon} size={24} color={colors.primary} />
-      </View>
-      <View style={styles.settingInfo}>
-        <Text style={styles.settingTitle}>{item.title}</Text>
-        {item.description && (
-          <Text style={styles.settingDescription}>{item.description}</Text>
-        )}
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-    </TouchableOpacity>
-  );
+  const [autoLogin, setAutoLogin] = useState(false);
+  const [afterLogin, setAfterLogin] = useState<AfterLoginScreen>('home');
+  const [afterPayment, setAfterPayment] = useState<AfterPaymentScreen>('home');
 
   return (
     <View style={styles.container}>
       <ScreenHeader title="Cài đặt" showBack />
 
-      <FlatList
-        data={settingsItems}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.listContent}
-      />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Tự động đăng nhập */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="refresh-circle-outline" size={20} color={colors.primary} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Tự động đăng nhập</Text>
+          </View>
+          <Text style={styles.sectionDesc}>Tự động đăng nhập vào ứng dụng ở những lần mở app sau.</Text>
+          <View style={styles.toggleRow}>
+            <Switch
+              value={autoLogin}
+              onValueChange={setAutoLogin}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.white}
+            />
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Màn hình sau khi đăng nhập */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Màn hình sau khi đăng nhập</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Ứng dụng sẽ hiển thị màn hình nào sau khi <Text style={styles.bold}>đăng nhập</Text>
+          </Text>
+          {AFTER_LOGIN_OPTIONS.map((opt) => (
+            <View key={opt.value} style={styles.checkRow}>
+              <Ionicons
+                name={afterLogin === opt.value ? 'checkbox' : 'square-outline'}
+                size={20}
+                color={afterLogin === opt.value ? colors.primary : colors.textSecondary}
+                onPress={() => setAfterLogin(opt.value)}
+              />
+              <Text style={styles.checkLabel} onPress={() => setAfterLogin(opt.value)}>
+                {opt.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Màn hình sau khi thanh toán */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Màn hình sau khi thanh toán</Text>
+          </View>
+          <Text style={styles.sectionDesc}>
+            Ứng dụng sẽ hiển thị màn hình nào sau khi <Text style={styles.bold}>thanh toán</Text>
+          </Text>
+          {AFTER_PAYMENT_OPTIONS.map((opt) => (
+            <View key={opt.value} style={styles.checkRow}>
+              <Ionicons
+                name={afterPayment === opt.value ? 'checkbox' : 'square-outline'}
+                size={20}
+                color={afterPayment === opt.value ? colors.primary : colors.textSecondary}
+                onPress={() => setAfterPayment(opt.value)}
+              />
+              <Text style={styles.checkLabel} onPress={() => setAfterPayment(opt.value)}>
+                {opt.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+      </ScrollView>
     </View>
   );
 };
@@ -68,40 +108,53 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  listContent: {
-    paddingTop: spacing.sm,
+  content: {
+    paddingBottom: spacing.xl,
   },
-  settingItem: {
+  section: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.background,
+    marginBottom: spacing.xs,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+  sectionIcon: {
+    marginRight: spacing.sm,
   },
-  settingInfo: {
-    flex: 1,
+  sectionTitle: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
   },
-  settingTitle: {
+  sectionDesc: {
     ...typography.body,
     color: colors.textPrimary,
-    fontWeight: '500',
+    marginBottom: spacing.sm,
+    lineHeight: 20,
   },
-  settingDescription: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+  bold: {
+    fontWeight: 'bold',
+    color: colors.textPrimary,
   },
-  separator: {
+  toggleRow: {
+    alignItems: 'flex-end',
+    marginTop: -spacing.xl,
+  },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  checkLabel: {
+    ...typography.body,
+    color: colors.textPrimary,
+    marginLeft: spacing.sm,
+  },
+  divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginLeft: spacing.md + 40 + spacing.md,
+    marginHorizontal: spacing.md,
   },
 });
