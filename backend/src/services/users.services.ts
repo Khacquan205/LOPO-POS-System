@@ -1,10 +1,10 @@
 import { Types } from 'mongoose'
 import User from '~/models/schemas/User.schema.js'
 import Store from '~/models/schemas/Store.schema.js'
-import RefreshToken from '~/models/RefreshToken.schema.js'
+import RefreshToken from '~/models/schemas/RefreshToken.schema.js'
 import { hashPassword, comparePassword } from '~/utils/crypto.js'
 import { signToken, verifyToken } from '~/utils/jwt.js'
-import { TokenType, UserRole } from '~/constants/enum.js'
+import { TokenType, UserRole, UserStatus } from '~/constants/enum.js'
 import { envConfig } from '~/config/index.js'
 import { ErrorWithStatus } from '~/middlewares/error.middlewares.js'
 import HTTP_STATUS from '~/constants/httpStatus.js'
@@ -31,7 +31,7 @@ interface LoginReqBody {
 }
 
 class UsersService {
-  private async createStaffAccount(payload: RegisterStaffReqBody) {
+  private async createStaffAccount(payload: RegisterStaffReqBody, store_id?: string) {
     const phoneExisted = await this.checkPhoneNumberExists(payload.phone_number)
     if (phoneExisted) {
       throw new ErrorWithStatus({
@@ -44,7 +44,9 @@ class UsersService {
       full_name: payload.full_name,
       phone_number: payload.phone_number,
       password: hashPassword(payload.password),
-      role: UserRole.Staff
+      role: UserRole.Staff,
+      store_id: store_id ? new Types.ObjectId(store_id) : null,
+      status: UserStatus.Active
     })
 
     const user_id = staff._id.toString()
@@ -111,13 +113,18 @@ class UsersService {
       full_name: payload.full_name,
       phone_number: payload.phone_number,
       password: hashPassword(payload.password),
-      role: UserRole.Owner
+      role: UserRole.Owner,
+      status: UserStatus.Active
     })
 
     const store = await Store.create({
       name: payload.store_name,
       owner_id: user._id
     })
+
+    // Gán store_id cho owner
+    user.store_id = store._id as any
+    await user.save()
 
     const user_id = user._id.toString()
     const [access_token, refresh_token] = await this.signAccessAndRefreshToken(user_id, user.role)
@@ -157,7 +164,8 @@ class UsersService {
       })
     }
 
-    return this.createStaffAccount(payload)
+    const store_id = owner.store_id ? owner.store_id.toString() : undefined
+    return this.createStaffAccount(payload, store_id)
   }
 
   async registerStaff(payload: RegisterStaffReqBody) {
@@ -170,6 +178,20 @@ class UsersService {
       throw new ErrorWithStatus({
         message: USERS_MESSAGES.PHONE_OR_PASSWORD_IS_INCORRECT,
         status: HTTP_STATUS.UNAUTHORIZED
+      })
+    }
+
+    if (user.status === UserStatus.Inactive) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ACCOUNT_IS_INACTIVE,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+
+    if (user.status === UserStatus.Blocked) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ACCOUNT_IS_BLOCKED,
+        status: HTTP_STATUS.FORBIDDEN
       })
     }
 
@@ -189,7 +211,25 @@ class UsersService {
       token: refresh_token
     })
 
-    return { access_token, refresh_token }
+    // Lấy store name nếu user có store_id
+    let store_name: string | null = null
+    if (user.store_id) {
+      const store = await Store.findById(user.store_id)
+      store_name = store?.name ?? null
+    }
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        _id: user._id,
+        full_name: user.full_name,
+        phone_number: user.phone_number,
+        role: user.role,
+        store_id: user.store_id ?? null,
+        store_name
+      }
+    }
   }
 
   async logout(refresh_token: string) {

@@ -1,5 +1,5 @@
 import { Schema, model, type InferSchemaType } from 'mongoose'
-import { UserRole } from '~/constants/enum.js'
+import { UserRole, UserStatus } from '~/constants/enum.js'
 
 const userSchema = new Schema(
   {
@@ -22,6 +22,16 @@ const userSchema = new Schema(
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.Staff
+    },
+    store_id: {
+      type: Schema.Types.ObjectId,
+      ref: 'stores',
+      default: null
+    },
+    status: {
+      type: String,
+      enum: Object.values(UserStatus),
+      default: UserStatus.Active
     }
   },
   {

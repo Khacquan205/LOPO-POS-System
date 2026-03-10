@@ -3,7 +3,7 @@ export interface User {
   id: string;
   name: string;
   phone: string;
-  role: 'owner' | 'staff' | 'admin';
+  role: 'owner' | 'staff';
   storeId: string | null;
   storeName: string | null;
 }
@@ -19,7 +19,6 @@ export interface AuthPayload {
 export const UserRole = {
   OWNER: 'owner',
   STAFF: 'staff',
-  ADMIN: 'admin',
 } as const;
 
 export type UserRoleValue = (typeof UserRole)[keyof typeof UserRole];

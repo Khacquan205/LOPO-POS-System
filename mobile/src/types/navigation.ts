@@ -1,6 +1,9 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type {
+  CompositeScreenProps,
+  NavigatorScreenParams,
+} from "@react-navigation/native";
 
 // ── Shared param types ───────────────────────────────────────
 export type PickedItem = {
@@ -56,9 +59,17 @@ export type MainStackParamList = {
     currentQty: number;
     returnScreen: 'Sales' | 'DraftOrderDetail';
   };
-  Products: undefined;
+  Products: { showDeleteSuccessToast?: boolean } | undefined;
+  CreateProduct: undefined;
+  ProductDetail: { productId: string; edited?: boolean };
+  EditProduct: { productId: string };
   Customers: undefined;
   Staff: undefined;
+  StaffDetail: { staffId: string };
+  EditStaff: { staffId: string };
+  CreateStaff: undefined;
+  StaffApproval: undefined;
+  StaffApprovalDetail: { approvalId: string };
   Settings: undefined;
   Support: undefined;
   Notifications: undefined;

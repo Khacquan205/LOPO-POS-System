@@ -1,0 +1,27 @@
+[
+  {
+    "store_id": { "$oid": "REPLACE_WITH_STORE_ID" },
+    "name": "Do uong",
+    "is_active": true
+  },
+  {
+    "store_id": { "$oid": "REPLACE_WITH_STORE_ID" },
+    "name": "Do an nhanh",
+    "is_active": true
+  },
+  {
+    "store_id": { "$oid": "REPLACE_WITH_STORE_ID" },
+    "name": "Do dong lanh",
+    "is_active": true
+  },
+  {
+    "store_id": { "$oid": "REPLACE_WITH_STORE_ID" },
+    "name": "Rau cu qua",
+    "is_active": true
+  },
+  {
+    "store_id": { "$oid": "REPLACE_WITH_STORE_ID" },
+    "name": "Thit ca hai san",
+    "is_active": true
+  }
+]
