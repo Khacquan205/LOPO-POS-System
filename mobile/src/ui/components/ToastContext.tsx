@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { View, StyleSheet } from "react-native";
 import { SuccessToast } from "./SuccessToast";
 
 // ============================================================================
@@ -7,6 +8,8 @@ import { SuccessToast } from "./SuccessToast";
 
 interface ToastContextType {
   showSuccessToast: (message: string) => void;
+  showErrorToast: (message: string) => void;
+  showWarningToast: (message: string) => void;
   hideToast: () => void;
   toastVisible: boolean;
   toastMessage: string;
@@ -29,8 +32,24 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<
+    "success" | "error" | "warning"
+  >("success");
 
   const showSuccessToast = useCallback((message: string) => {
+    setToastVariant("success");
+    setToastMessage(message);
+    setToastVisible(true);
+  }, []);
+
+  const showErrorToast = useCallback((message: string) => {
+    setToastVariant("error");
+    setToastMessage(message);
+    setToastVisible(true);
+  }, []);
+
+  const showWarningToast = useCallback((message: string) => {
+    setToastVariant("warning");
     setToastMessage(message);
     setToastVisible(true);
   }, []);
@@ -41,17 +60,38 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 
   return (
     <ToastContext.Provider
-      value={{ showSuccessToast, hideToast, toastVisible, toastMessage }}
+      value={{
+        showSuccessToast,
+        showErrorToast,
+        showWarningToast,
+        hideToast,
+        toastVisible,
+        toastMessage,
+      }}
     >
       {children}
-      <SuccessToast
-        visible={toastVisible}
-        message={toastMessage}
-        onHide={hideToast}
-      />
+      <View style={styles.toastWrapper} pointerEvents="none">
+        <SuccessToast
+          visible={toastVisible}
+          message={toastMessage}
+          duration={3000}
+          onHide={hideToast}
+          variant={toastVariant}
+        />
+      </View>
     </ToastContext.Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  toastWrapper: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+  },
+});
 
 // ============================================================================
 // HOOK

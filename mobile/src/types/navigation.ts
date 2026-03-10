@@ -41,6 +41,11 @@ export type MainStackParamList = {
   CustomerDetail: { customerId: string };
   PurchaseHistory: { customerId: string; customerCode: string };
   Staff: undefined;
+  StaffDetail: { staffId: string };
+  EditStaff: { staffId: string };
+  CreateStaff: undefined;
+  StaffApproval: undefined;
+  StaffApprovalDetail: { approvalId: string };
   Settings: undefined;
   Support: undefined;
   Notifications: undefined;
