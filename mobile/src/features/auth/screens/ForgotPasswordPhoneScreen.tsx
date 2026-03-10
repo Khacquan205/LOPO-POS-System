@@ -1,14 +1,8 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
@@ -24,6 +18,11 @@ type Props = AuthScreenProps<'ForgotPasswordPhone'>;
 export const ForgotPasswordPhoneScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof ForgotPasswordPhoneFormData | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const {
     control,
@@ -40,12 +39,24 @@ export const ForgotPasswordPhoneScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const showError = (fieldName: keyof ForgotPasswordPhoneFormData): string | undefined => {
-    const value = watch(fieldName) || '';
+    if (focusedField === fieldName) return undefined;
+    const value = String(watch(fieldName) ?? '');
     const isTouched = touchedFields[fieldName];
     const hasValue = value.trim().length > 0;
     const shouldShow = submitted || (isTouched && hasValue);
-    return shouldShow ? errors[fieldName]?.message : undefined;
+    return shouldShow ? (errors[fieldName] as { message?: string } | undefined)?.message : undefined;
   };
+
+  const makeHandlers = (
+    fieldName: keyof ForgotPasswordPhoneFormData,
+    rhfOnBlur: () => void,
+  ) => ({
+    onFocus: () => setFocusedField(fieldName),
+    onBlur: () => {
+      setFocusedField(null);
+      rhfOnBlur();
+    },
+  });
 
   const onValid = async (data: ForgotPasswordPhoneFormData): Promise<void> => {
     setLoading(true);
@@ -64,76 +75,81 @@ export const ForgotPasswordPhoneScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <Screen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
-            <Text style={styles.subtitle}>
-              Nhập số điện thoại đã đăng ký để nhận mã xác thực
-            </Text>
-          </View>
+    <Screen scroll keyboardAvoiding>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
 
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
+      <View style={styles.form}>
+        <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
+        <Text style={styles.subtitle}>
+          Nhập số điện thoại đã đăng ký để nhận mã xác thực
+        </Text>
+
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Số điện thoại <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Số điện thoại"
-                placeholder="Nhập số điện thoại"
+                placeholder="Ví dụ: 0365416XXX"
                 keyboardType="phone-pad"
-                leftIconName="call-outline"
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('phone')}
+                {...makeHandlers('phone', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <View style={styles.buttonWrapper}>
-            <Button
-              title="Xác nhận"
-              onPress={handleSubmit(onValid, onInvalid)}
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Button
+          title="Xác nhận"
+          onPress={handleSubmit(onValid, onInvalid)}
+          loading={loading}
+          style={styles.submitButton}
+        />
+      </View>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
-  header: {
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  form: {
+    flex: 1,
   },
   title: {
-    ...typography.h2,
+    ...typography.screenTitle,
     color: colors.primary,
-    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    ...typography.body,
+    ...typography.bodyMedium,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
-  buttonWrapper: {
-    marginTop: spacing.lg,
+  fieldWrapper: {
+    marginBottom: spacing.sm,
+  },
+  label: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  required: {
+    color: colors.error,
+  },
+  submitButton: {
+    marginTop: spacing.md,
   },
 });

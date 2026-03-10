@@ -10,7 +10,7 @@ export const fontFamily = {
 
 export const typography: Record<string, TextStyle> = {
   screenTitle: {
-    fontSize: 20,
+    fontSize: 30,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',

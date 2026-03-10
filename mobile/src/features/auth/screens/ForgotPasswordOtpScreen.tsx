@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { Screen, Button } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { OtpInput } from '../components/OtpInput';
+import { Ionicons } from '@expo/vector-icons';
 import { verifyOtp, sendOtp } from '../services/auth.mock';
 import type { AuthScreenProps } from '../../../types/navigation';
 
@@ -12,6 +13,10 @@ const RESEND_TIMEOUT = 90;
 type Props = AuthScreenProps<'ForgotPasswordOtp'>;
 
 export const ForgotPasswordOtpScreen: React.FC<Props> = ({ navigation, route }) => {
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   const phone = route?.params?.phone || '';
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,19 +69,17 @@ export const ForgotPasswordOtpScreen: React.FC<Props> = ({ navigation, route }) 
   const isValid = otp.length === 6;
 
   return (
-    <Screen>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
-          <Text style={styles.subtitle}>
-            Mã xác thực đã được gửi đến số{' '}
-            <Text style={styles.phoneHighlight}>{phone}</Text>
-          </Text>
-        </View>
+    <Screen scroll>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
+
+      <View style={styles.form}>
+        <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
+        <Text style={styles.subtitle}>
+          Mã xác thực đã được gửi đến số{' '}
+          <Text style={styles.phoneHighlight}>{phone}</Text>
+        </Text>
 
         <View style={styles.otpWrapper}>
           <OtpInput value={otp} onChange={setOtp} error={!!error} />
@@ -95,38 +98,38 @@ export const ForgotPasswordOtpScreen: React.FC<Props> = ({ navigation, route }) 
             : 'Gửi lại mã xác thực'}
         </Text>
 
-        <View style={styles.buttonWrapper}>
-          <Button
-            title="Xác nhận"
-            onPress={onSubmit}
-            loading={loading}
-            disabled={loading || !isValid}
-          />
-        </View>
-      </ScrollView>
+        <Button
+          title="Xác nhận"
+          onPress={onSubmit}
+          loading={loading}
+          disabled={loading || !isValid}
+          style={styles.submitButton}
+        />
+      </View>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
-  header: {
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  form: {
+    flex: 1,
   },
   title: {
-    ...typography.h2,
+    ...typography.screenTitle,
     color: colors.primary,
-    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    ...typography.body,
+    ...typography.bodyMedium,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
   phoneHighlight: {
     color: colors.primary,
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
   resendActive: {
     color: colors.linkOrange,
   },
-  buttonWrapper: {
+  submitButton: {
     marginTop: spacing.md,
   },
 });

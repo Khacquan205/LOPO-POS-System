@@ -2,6 +2,26 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 
+// ── Shared param types ───────────────────────────────────────
+export type PickedItem = {
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+};
+
+export type UpdatedItem = {
+  itemId: string;
+  qty: number;
+};
+
+export type LiveOrderPayload = {
+  code: string;
+  items: { id: string; productName: string; unitPrice: number; quantity: number }[];
+  customer?: { name: string; phone?: string };
+  total: number;
+};
+
 // ── Auth Stack ───────────────────────────────────────────────
 export type AuthStackParamList = {
   Login: undefined;
@@ -22,7 +42,20 @@ export type MainTabsParamList = {
 export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
   Orders: undefined;
-  Sales: undefined;
+  DraftOrderDetail: { orderId: string; pickedItems?: PickedItem[]; updatedItem?: UpdatedItem };
+  OrderBillReadOnly: { orderId: string };
+  OrderSummary: { orderId?: string; fromDraft?: boolean; liveOrder?: LiveOrderPayload };
+  Payment: { orderCode: string; total: number };
+  Sales: { pickedItems?: PickedItem[]; updatedItem?: UpdatedItem } | undefined;
+  ProductPicker: { orderId: string; returnScreen: 'Sales' | 'DraftOrderDetail' };
+  QuantityEditor: {
+    orderId: string;
+    itemId: string;
+    productName: string;
+    unitPrice: number;
+    currentQty: number;
+    returnScreen: 'Sales' | 'DraftOrderDetail';
+  };
   Products: undefined;
   Customers: undefined;
   Staff: undefined;
