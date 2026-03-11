@@ -280,11 +280,16 @@ class UsersService {
         status: HTTP_STATUS.NOT_FOUND
       })
     }
+    const serializedUser = this.serializeUser(user)
     const normalizedStoreId = user.store_id ? String(user.store_id) : null
+    const { createdAt, updatedAt, ...profile } = serializedUser as Record<string, unknown>
+
     return {
-      ...this.serializeUser(user),
+      ...profile,
       store_id: normalizedStoreId,
-      store_qr_code: normalizedStoreId
+      store_qr_code: normalizedStoreId,
+      createdAt,
+      updatedAt
     }
   }
 }
