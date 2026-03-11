@@ -61,6 +61,11 @@ class ProductsService {
     delete raw.updatedAt
     delete raw.sku
     delete raw.cost_price
+    // Normalize category_id: nếu đã populate (object), lấy custom category_id
+    if (raw.category_id && typeof raw.category_id === 'object') {
+      const cat = raw.category_id as Record<string, unknown>
+      raw.category_id = String(cat.category_id ?? cat._id)
+    }
     return {
       product_id: normalizedProductId,
       ...raw
@@ -72,7 +77,7 @@ class ProductsService {
     return Product.findOne({
       store_id: new Types.ObjectId(store_id),
       $or: [{ product_id: parsedId }, { _id: parsedId }]
-    })
+    }).populate('category_id', 'category_id')
   }
 
   private async findCategoryByPublicId(store_id: string, category_id: string) {
@@ -95,7 +100,9 @@ class ProductsService {
 
   async getProducts(user_id: string) {
     const store_id = await this.getStoreId(user_id)
-    const products = await Product.find({ store_id: new Types.ObjectId(store_id) }).sort({ createdAt: -1 })
+    const products = await Product.find({ store_id: new Types.ObjectId(store_id) })
+      .populate('category_id', 'category_id')
+      .sort({ createdAt: -1 })
     const productIds = products.map((product) => product._id)
     const stocks = await InventoryStock.find({
       store_id: new Types.ObjectId(store_id),
@@ -121,7 +128,7 @@ class ProductsService {
       store_id: new Types.ObjectId(store_id),
       barcode,
       is_active: true
-    })
+    }).populate('category_id', 'category_id')
     if (!product) {
       throw new ErrorWithStatus({
         message: PRODUCTS_MESSAGES.PRODUCT_NOT_FOUND_BY_BARCODE,
@@ -204,6 +211,8 @@ class ProductsService {
       )
     }
 
+    await product.populate('category_id', 'category_id')
+
     return {
       ...this.serializeProduct(product),
       on_hand: onHand
@@ -248,6 +257,7 @@ class ProductsService {
 
     Object.assign(product, updateData)
     await product.save()
+    await product.populate('category_id', 'category_id')
 
     if (nextTrackInventory) {
       if (hasOnHand) {
