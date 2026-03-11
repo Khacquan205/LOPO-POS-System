@@ -63,7 +63,16 @@ export type MainStackParamList = {
   CreateProduct: undefined;
   ProductDetail: { productId: string; edited?: boolean };
   EditProduct: { productId: string };
-  Customers: undefined;
+  Customers:
+    | {
+        showCreateSuccessToast?: boolean;
+        successMessage?: string;
+      }
+    | undefined;
+  CreateCustomer: undefined;
+  EditCustomer: { customerId: string };
+  CustomerDetail: { customerId: string };
+  PurchaseHistory: { customerId: string; customerCode: string };
   Staff: undefined;
   StaffDetail: { staffId: string };
   EditStaff: { staffId: string };
