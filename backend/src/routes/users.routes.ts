@@ -6,11 +6,13 @@ import {
   refreshTokenController,
   registerStaffPublicController,
   registerStaffController,
-  registerController
+  registerController,
+  getStaffsController
 } from '~/controllers/user.controllers.js'
 import {
   accessTokenValidator,
   loginValidator,
+  ownerOnlyValidator,
   registerOwnerValidator,
   registerStaffValidator,
   refreshTokenValidator
@@ -22,6 +24,7 @@ const usersRouter = Router()
 usersRouter.post('/register-owner', registerOwnerValidator, wrapRequestHandler(registerController))
 usersRouter.post('/register-staff', registerStaffValidator, wrapRequestHandler(registerStaffPublicController))
 usersRouter.post('/staff', accessTokenValidator, registerStaffValidator, wrapRequestHandler(registerStaffController))
+usersRouter.get('/staff', accessTokenValidator, ownerOnlyValidator, wrapRequestHandler(getStaffsController))
 usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
 usersRouter.post('/logout', accessTokenValidator, refreshTokenValidator, wrapRequestHandler(logoutController))
 usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(refreshTokenController))

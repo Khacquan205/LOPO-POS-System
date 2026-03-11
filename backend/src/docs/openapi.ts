@@ -425,6 +425,49 @@ const openApiSpec = {
       }
     },
     '/api/users/staff': {
+      get: {
+        tags: ['Users'],
+        summary: 'Owner lấy danh sách staff trong cửa hàng',
+        description: 'Dựa vào store_id của owner để lấy tất cả staff thuộc store đó.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lấy danh sách nhân viên thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Lấy danh sách nhân viên thành công' },
+                    result: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          user_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2b' },
+                          full_name: { type: 'string', example: 'Nguyen Van Staff' },
+                          phone_number: { type: 'string', example: '0912345678' },
+                          role: { type: 'string', enum: ['staff'] },
+                          store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
+                          status: { type: 'string', enum: ['active', 'inactive', 'blocked'] },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          updatedAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': {
+            description: 'Thiếu hoặc sai access token'
+          },
+          '403': {
+            description: 'Không phải owner hoặc tài khoản chưa liên kết cửa hàng'
+          }
+        }
+      },
       post: {
         tags: ['Users'],
         summary: 'Owner tạo tài khoản staff',

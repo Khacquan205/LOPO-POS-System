@@ -18,6 +18,7 @@ export const USERS_MESSAGES = {
   REGISTER_STAFF_SELF_SUCCESS: 'Đăng ký tài khoản nhân viên thành công',
   LOGOUT_SUCCESS: 'Đăng xuất thành công',
   GET_ME_SUCCESS: 'Lấy thông tin người dùng thành công',
+  GET_STAFFS_SUCCESS: 'Lấy danh sách nhân viên thành công',
   USER_NOT_FOUND: 'Không tìm thấy người dùng',
   ONLY_OWNER_CAN_CREATE_STAFF: 'Chỉ chủ cửa hàng mới có quyền tạo nhân viên',
   ONLY_OWNER_CAN_DO_THIS: 'Chỉ chủ cửa hàng mới có quyền thực hiện',
