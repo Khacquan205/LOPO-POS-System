@@ -267,6 +267,37 @@ class UsersService {
     }
     return user
   }
+
+  async getStaffsInStore(owner_user_id: string) {
+    const owner = await User.findById(owner_user_id)
+    if (!owner || owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    if (!owner.store_id) {
+      throw new ErrorWithStatus({
+        message: 'Tài khoản chưa được liên kết với cửa hàng',
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    
+    const staffs = await User.find({ store_id: owner.store_id, role: UserRole.Staff })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean()
+    return staffs.map((item) => ({
+      user_id: item._id.toString(),
+      full_name: item.full_name,
+      phone_number: item.phone_number,
+      role: item.role,
+      store_id: item.store_id,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }))
+  }
 }
 
 const usersService = new UsersService()
