@@ -9,6 +9,8 @@ import {
   Dimensions,
   ScrollView,
   AccessibilityInfo,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { colors, spacing, typography, radius, shadow } from "../../../ui/theme";
 
@@ -142,8 +144,15 @@ export const AddCategoryBottomSheet: React.FC<AddCategoryBottomSheetProps> = ({
       />
 
       {/* BOTTOM SHEET CONTAINER */}
-      <View style={styles.bottomSheetContainer}>
-        <View style={styles.bottomSheet}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.bottomSheetContainer}
+      >
+        <ScrollView
+          style={styles.bottomSheet}
+          scrollEnabled={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* TITLE */}
           <Text style={styles.title}>THÊM LOẠI SẢN PHẨM</Text>
 
@@ -185,8 +194,8 @@ export const AddCategoryBottomSheet: React.FC<AddCategoryBottomSheetProps> = ({
           >
             <Text style={styles.submitButtonText}>Hoàn tất</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -219,7 +228,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xxl, // 24
     paddingHorizontal: spacing.md, // 16
     paddingTop: spacing.md + spacing.sm, // 18-22 (16 + 8 = 24, but let's use 20 which is approximately)
-    paddingBottom: spacing.md + spacing.sm, // 16-20
+    paddingBottom: Math.max(spacing.xl, spacing.md + spacing.sm + 80), // 16-20 or more for keyboard
     ...shadow.lg,
   },
 

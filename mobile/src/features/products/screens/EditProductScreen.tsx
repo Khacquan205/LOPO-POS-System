@@ -1,12 +1,17 @@
-import React, { useMemo, useState } from "react";
-import { ScrollView, SafeAreaView, StyleSheet } from "react-native";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { Alert, ScrollView, SafeAreaView, StyleSheet } from "react-native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
 import { FooterActions } from "../components/createProduct/FooterActions";
-import { CategoryPickerBottomSheet } from "../components/CategoryPickerBottomSheet";
+import {
+  CategoryPickerBottomSheet,
+  type PickerCategory,
+} from "../components/CategoryPickerBottomSheet";
 import { AddCategoryBottomSheet } from "../components/AddCategoryBottomSheet";
-import { Category } from "../mock/productManagement.mock";
 import { useProductsStore } from "../store/products.store";
+import { useAuthStore } from "../../../store/auth.store";
+import { useCategoriesStore } from "../store/categories.store";
+import { useInventoryStore } from "../store/inventory.store";
 import type { MainStackScreenProps } from "../../../types/navigation";
 
 const HERO_IMAGE_URI =
@@ -16,7 +21,16 @@ type Props = MainStackScreenProps<"EditProduct">;
 
 export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const products = useProductsStore((state) => state.products);
+  const fetchProductById = useProductsStore((state) => state.fetchProductById);
   const updateProduct = useProductsStore((state) => state.updateProduct);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const categories = useCategoriesStore((state) => state.categories);
+  const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
+  const createCategory = useCategoriesStore((state) => state.createCategory);
+  const fetchStockByProduct = useInventoryStore(
+    (state) => state.fetchStockByProduct,
+  );
+  const [categoryList, setCategoryList] = useState<PickerCategory[]>([]);
 
   const editingProduct = useMemo(
     () => products.find((item) => item.id === route.params.productId),
@@ -34,42 +48,175 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const [productCategory, setProductCategory] = useState(
     editingProduct?.category ?? "Bánh kẹo",
   );
-  const [barcode, setBarcode] = useState("6756756800");
-  const [manageInventory, setManageInventory] = useState(true);
-  const [inventory, setInventory] = useState("67");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    editingProduct?.categoryId ?? null,
+  );
+  const [barcode, setBarcode] = useState(editingProduct?.barcode ?? "");
+  const [manageInventory, setManageInventory] = useState(
+    editingProduct?.trackInventory ?? true,
+  );
+  const [inventory, setInventory] = useState(
+    String(editingProduct?.onHand ?? 0),
+  );
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const hasHydratedFormRef = useRef(false);
+
+  const categoryLookup = useMemo(
+    () =>
+      categories.map((item) => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+      })),
+    [categories],
+  );
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void fetchCategories(accessToken);
+  }, [accessToken, fetchCategories]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    if (hasHydratedFormRef.current) return;
+    void (async () => {
+      try {
+        const latest = await fetchProductById(
+          accessToken,
+          route.params.productId,
+          categoryLookup,
+        );
+
+        if (!latest) return;
+
+        setProductName(latest.name);
+        setProductPrice(new Intl.NumberFormat("vi-VN").format(latest.price));
+        setProductCategory(latest.category);
+        setSelectedCategoryId(latest.categoryId);
+        setBarcode(latest.barcode ?? "");
+        setManageInventory(latest.trackInventory);
+        setInventory(String(latest.onHand ?? 0));
+        hasHydratedFormRef.current = true;
+      } catch (error) {
+        console.warn("Load product for edit failed:", error);
+      }
+    })();
+  }, [accessToken, fetchProductById, route.params.productId, categoryLookup]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void (async () => {
+      const onHand = await fetchStockByProduct(
+        accessToken,
+        route.params.productId,
+      );
+      if (typeof onHand === "number" && manageInventory) {
+        setInventory(String(onHand));
+      }
+    })();
+  }, [
+    accessToken,
+    fetchStockByProduct,
+    route.params.productId,
+    manageInventory,
+  ]);
+
+  const handleChangeManageInventory = (value: boolean) => {
+    setManageInventory(value);
+    if (!value) {
+      setInventory("0");
+    }
+  };
+
+  useEffect(() => {
+    setCategoryList(
+      categories.map((item) => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+      })),
+    );
+  }, [categories]);
 
   const handleSelectCategory = () => {
     setShowCategoryPicker(true);
   };
 
-  const handleCategorySelected = (category: Category) => {
+  const handleCategorySelected = (category: PickerCategory) => {
     setProductCategory(category.name);
+    setSelectedCategoryId(category.id);
   };
 
   const handleAddNewCategory = () => {
     setShowAddCategory(true);
   };
 
-  const handleAddCategorySubmit = (
+  const handleAddCategorySubmit = async (
     categoryName: string,
-    selectedColor: string,
+    _selectedColor: string,
   ) => {
-    console.log("Add category submitted", { categoryName, selectedColor });
-    // TODO: Add the new category to the store or list
-    // For now, just close the bottom sheet
+    if (!accessToken) return;
+    try {
+      await createCategory(accessToken, {
+        name: categoryName,
+        is_active: true,
+      });
+    } catch (error) {
+      console.warn("Create category failed:", error);
+    }
     setShowAddCategory(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!accessToken) return;
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
+    const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
+    const onHand = Number(inventory.replace(/[^0-9]/g, ""));
+    const normalizedOnHand = Number.isFinite(onHand) ? onHand : 0;
 
-    updateProduct(route.params.productId, {
-      name: productName,
-      price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
-      category: productCategory,
-    });
+    if (!productName.trim()) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập tên sản phẩm.");
+      return;
+    }
+
+    if (normalizedPrice <= 0) {
+      Alert.alert("Giá chưa hợp lệ", "Giá bán phải lớn hơn 0.");
+      return;
+    }
+
+    if (manageInventory && normalizedOnHand <= 0) {
+      Alert.alert(
+        "Tồn kho chưa hợp lệ",
+        "Khi bật quản lý tồn kho, bạn phải nhập số lượng tồn lớn hơn 0.",
+      );
+      return;
+    }
+
+    const categoryLookup = categoryList.map((item) => ({
+      id: item.id,
+      name: item.name,
+      color: item.color,
+    }));
+
+    try {
+      await updateProduct(
+        accessToken,
+        route.params.productId,
+        {
+          name: productName.trim(),
+          price: normalizedPrice,
+          category_id: selectedCategoryId,
+          barcode: barcode.trim() || undefined,
+          track_inventory: manageInventory,
+          on_hand: manageInventory ? normalizedOnHand : 0,
+        },
+        categoryLookup,
+      );
+    } catch (error) {
+      console.warn("Update product failed:", error);
+      return;
+    }
 
     // Navigate back with edited flag to trigger success toast
     navigation.navigate("ProductDetail", {
@@ -101,7 +248,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           onChangeBarcode={setBarcode}
           onPressScanBarcode={() => console.log("Scan barcode pressed")}
           manageInventory={manageInventory}
-          onChangeManageInventory={setManageInventory}
+          onChangeManageInventory={handleChangeManageInventory}
           inventory={inventory}
           onChangeInventory={setInventory}
         />
@@ -118,6 +265,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         onClose={() => setShowCategoryPicker(false)}
         onSelectCategory={handleCategorySelected}
         onAddNewCategory={handleAddNewCategory}
+        categories={categoryList}
       />
 
       {/* Add Category Bottom Sheet */}
