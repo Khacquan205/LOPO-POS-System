@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CommonActions } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
@@ -28,6 +21,11 @@ export const ForgotPasswordResetScreen: React.FC<Props> = ({ navigation, route }
   const otp = route?.params?.otp;
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof ForgotPasswordResetFormData | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const {
     control,
@@ -45,12 +43,24 @@ export const ForgotPasswordResetScreen: React.FC<Props> = ({ navigation, route }
   });
 
   const showError = (fieldName: keyof ForgotPasswordResetFormData): string | undefined => {
+    if (focusedField === fieldName) return undefined;
     const value = watch(fieldName) || '';
     const isTouched = touchedFields[fieldName];
     const hasValue = value.trim().length > 0;
     const shouldShow = submitted || (isTouched && hasValue);
     return shouldShow ? errors[fieldName]?.message : undefined;
   };
+
+  const makeHandlers = (
+    fieldName: keyof ForgotPasswordResetFormData,
+    rhfOnBlur: () => void,
+  ) => ({
+    onFocus: () => setFocusedField(fieldName),
+    onBlur: () => {
+      setFocusedField(null);
+      rhfOnBlur();
+    },
+  });
 
   const onValid = async (data: ForgotPasswordResetFormData): Promise<void> => {
     setLoading(true);
@@ -77,84 +87,91 @@ export const ForgotPasswordResetScreen: React.FC<Props> = ({ navigation, route }
   };
 
   return (
-    <Screen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
-          </View>
+    <Screen scroll keyboardAvoiding>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, onBlur, value } }) => (
+      <View style={styles.form}>
+        <Text style={styles.title}>QUÊN MẬT KHẨU</Text>
+
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Mật khẩu mới <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Mật khẩu mới"
-                placeholder="Nhập mật khẩu mới"
                 secureTextEntry
-                leftIconName="lock-closed-outline"
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('password')}
+                {...makeHandlers('password', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="confirmPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
+        <Controller
+          control={control}
+          name="confirmPassword"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Nhập lại mật khẩu <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Xác nhận mật khẩu"
-                placeholder="Nhập lại mật khẩu"
                 secureTextEntry
-                leftIconName="lock-closed-outline"
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('confirmPassword')}
+                {...makeHandlers('confirmPassword', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <View style={styles.buttonWrapper}>
-            <Button
-              title="Xác nhận"
-              onPress={handleSubmit(onValid, onInvalid)}
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Button
+          title="Xác nhận"
+          onPress={handleSubmit(onValid, onInvalid)}
+          loading={loading}
+          style={styles.submitButton}
+        />
+      </View>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
-  header: {
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  form: {
+    flex: 1,
   },
   title: {
-    ...typography.h2,
+    ...typography.screenTitle,
     color: colors.primary,
-    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
-  buttonWrapper: {
-    marginTop: spacing.lg,
+  fieldWrapper: {
+    marginBottom: spacing.sm,
+  },
+  label: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  required: {
+    color: colors.error,
+  },
+  submitButton: {
+    marginTop: spacing.md,
   },
 });

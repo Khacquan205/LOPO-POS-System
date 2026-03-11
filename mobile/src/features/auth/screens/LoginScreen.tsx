@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert, Image } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { Screen, Button, TextField, IconSquare, Divider } from '../../../ui/components';
+import { Screen, Button, TextField, Divider } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { loginSchema, LoginFormData } from '../../../lib/validation/auth.schema';
 import { useAuthStore } from '../../../store/auth.store';
@@ -16,6 +16,7 @@ type Props = AuthScreenProps<'Login'>;
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof LoginFormData | null>(null);
   const { setAuth } = useAuthStore();
 
   const {
@@ -34,12 +35,24 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const showError = (fieldName: keyof LoginFormData): string | undefined => {
+    if (focusedField === fieldName) return undefined;
     const value = watch(fieldName) || '';
     const isTouched = touchedFields[fieldName];
     const hasValue = value.trim().length > 0;
     const shouldShow = submitted || (isTouched && hasValue);
     return shouldShow ? errors[fieldName]?.message : undefined;
   };
+
+  const makeHandlers = (
+    fieldName: keyof LoginFormData,
+    rhfOnBlur: () => void,
+  ) => ({
+    onFocus: () => setFocusedField(fieldName),
+    onBlur: () => {
+      setFocusedField(null);
+      rhfOnBlur();
+    },
+  });
 
   const onValid = async (data: LoginFormData): Promise<void> => {
     setLoading(true);
@@ -81,12 +94,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <Screen scroll keyboardAvoiding style={styles.screen}>
       <View style={styles.header}>
-        <IconSquare
-          icon="storefront"
-          size={64}
-          iconSize={32}
-          backgroundColor={colors.primary}
-          style={styles.logo}
+        <Image
+          source={require('../../../../assets/IconLopo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
         />
         <Text style={styles.title}>ĐĂNG NHẬP</Text>
       </View>
@@ -102,8 +113,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               keyboardType="phone-pad"
               value={value}
               onChangeText={onChange}
-              onBlur={onBlur}
               error={showError('phone')}
+              {...makeHandlers('phone', onBlur)}
             />
           )}
         />
@@ -118,8 +129,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               secureTextEntry
               value={value}
               onChangeText={onChange}
-              onBlur={onBlur}
               error={showError('password')}
+              {...makeHandlers('password', onBlur)}
             />
           )}
         />
@@ -135,12 +146,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.navigate('RegisterSelectRole')}>
             <Text style={styles.linkOrange}>Đăng ký ngay</Text>
           </TouchableOpacity>
+
           <Divider
             vertical
             thickness={1}
             spacing={spacing.md}
             style={styles.linkDivider}
           />
+
           <TouchableOpacity onPress={() => navigation.navigate('ForgotPasswordPhone')}>
             <Text style={styles.linkOrange}>Lấy lại mật khẩu</Text>
           </TouchableOpacity>
@@ -165,7 +178,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.xl,
   },
-  logo: {
+  logoImage: {
+    width: 90,
+    height: 90,
     marginBottom: spacing.md,
   },
   title: {

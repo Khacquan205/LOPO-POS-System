@@ -1,12 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../../../ui/theme';
-import {
-  Order,
-  STATUS_LABELS,
-  formatCurrencyVND,
-  formatDateTime,
-} from '../mock/orders.mock';
+import { Order, formatCurrencyVND, formatDateTime } from '../mock/orders.mock';
+import { OrderStatusChip } from './OrderStatusChip';
 
 interface OrderRowProps {
   order: Order;
@@ -14,8 +10,6 @@ interface OrderRowProps {
 }
 
 export const OrderRow: React.FC<OrderRowProps> = ({ order, onPress }) => {
-  const statusLabel = STATUS_LABELS[order.status];
-
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -24,8 +18,13 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onPress }) => {
     >
       {/* Left side */}
       <View style={styles.leftSection}>
-        <Text style={styles.statusLabel}>{statusLabel}</Text>
+        <OrderStatusChip status={order.status} />
         <Text style={styles.orderCode}>{order.code}</Text>
+        {order.customer && (
+          <Text style={styles.customerName} numberOfLines={1}>
+            {order.customer.name}
+          </Text>
+        )}
       </View>
 
       {/* Right side */}
@@ -50,18 +49,19 @@ const styles = StyleSheet.create({
   },
   leftSection: {
     flex: 1,
+    gap: 4,
   },
   rightSection: {
     alignItems: 'flex-end',
-  },
-  statusLabel: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '600',
-    marginBottom: 4,
+    marginLeft: spacing.sm,
   },
   orderCode: {
     ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  customerName: {
+    ...typography.caption,
     color: colors.textSecondary,
   },
   dateTime: {

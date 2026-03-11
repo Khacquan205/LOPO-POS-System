@@ -11,12 +11,15 @@ import {
   STATUS_FILTER_LABELS,
   getOrderCountByStatus,
 } from '../mock/orders.mock';
+import type { MainStackScreenProps } from '../../../types/navigation';
 
 type FilterType = OrderStatusType | 'ALL';
 
 const FILTER_OPTIONS: FilterType[] = ['ALL', 'DRAFT', 'NEW', 'COMPLETED', 'CANCELLED'];
 
-export const OrdersScreen: React.FC = () => {
+type Props = MainStackScreenProps<'Orders'>;
+
+export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
 
@@ -50,8 +53,11 @@ export const OrdersScreen: React.FC = () => {
   };
 
   const handleOrderPress = (order: Order): void => {
-    // TODO: Navigate to order detail
-    console.log('Order pressed:', order.code);
+    if (order.status === 'DRAFT') {
+      navigation.navigate('DraftOrderDetail', { orderId: order.id });
+    } else {
+      navigation.navigate('OrderBillReadOnly', { orderId: order.id });
+    }
   };
 
   const handleFilterPress = (): void => {
