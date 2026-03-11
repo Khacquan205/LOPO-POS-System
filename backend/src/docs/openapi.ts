@@ -273,7 +273,7 @@ const openApiSpec = {
           category_id: { type: 'string', nullable: true, example: '67c2f0ef8f3f2f2f2f2f2f2d' },
           barcode: { type: 'string', example: '8936001234567' },
           image_url: { type: 'string', format: 'uri', example: 'https://example.com/image.jpg' },
-          track_inventory: { type: 'boolean', example: false },
+          track_inventory: { type: 'boolean', example: true },
           on_hand: {
             type: 'integer',
             minimum: 0,
