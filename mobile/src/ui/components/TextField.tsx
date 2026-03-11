@@ -29,44 +29,53 @@ export const TextField: React.FC<TextFieldProps> = ({
   style,
   leftIcon,
   leftIconName,
-  secureTextEntry,
+  secureTextEntry = false,
   containerStyle,
   inputStyle,
+  onFocus,
+  onBlur,
   ...props
 }) => {
-  const [isSecure, setIsSecure] = useState(secureTextEntry);
-  const [isFocused, setIsFocused] = useState(false);
+  const [isSecure, setIsSecure] = useState<boolean>(secureTextEntry === true);
 
-  const toggleSecure = () => setIsSecure(!isSecure);
+  const toggleSecure = () => setIsSecure((prev) => !prev);
 
   const renderLeftIcon = (): React.ReactNode => {
-    if (leftIcon) return leftIcon;
+    if (leftIcon) {
+      return <View style={styles.leftIconBox}>{leftIcon}</View>;
+    }
+
     if (leftIconName) {
       return (
-        <Ionicons
-          name={leftIconName}
-          size={20}
-          color={isFocused ? colors.primary : colors.textSecondary}
-          style={styles.leftIcon}
-        />
+        <View style={styles.leftIconBox}>
+          <Ionicons
+            name={leftIconName}
+            size={20}
+            color={colors.white || '#FFFFFF'}
+          />
+        </View>
       );
     }
+
     return null;
   };
 
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
+
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputContainerFocused,
           error && styles.inputContainerError,
           style,
         ]}
       >
         {renderLeftIcon()}
+
         <TextInput
+          {...props}
+          key={secureTextEntry ? 'secure-input' : 'plain-input'}
           style={[
             styles.input,
             (leftIconName || leftIcon) ? styles.inputWithIcon : null,
@@ -74,13 +83,17 @@ export const TextField: React.FC<TextFieldProps> = ({
           ]}
           placeholderTextColor={colors.textSecondary}
           secureTextEntry={isSecure}
-          onFocus={() => setIsFocused(true)}
-          onBlur={(e) => {
-            setIsFocused(false);
-            props.onBlur?.(e);
-          }}
-          {...props}
+          underlineColorAndroid="transparent"
+          autoCorrect={secureTextEntry ? false : props.autoCorrect}
+          autoCapitalize={secureTextEntry ? 'none' : props.autoCapitalize}
+          autoComplete={secureTextEntry ? 'password' : props.autoComplete}
+          textContentType={secureTextEntry ? 'oneTimeCode' : props.textContentType}
+          keyboardType={secureTextEntry ? 'default' : props.keyboardType}
+          importantForAutofill={secureTextEntry ? 'no' : 'auto'}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
+
         {secureTextEntry && (
           <TouchableOpacity onPress={toggleSecure} style={styles.eyeButton}>
             <Ionicons
@@ -91,6 +104,7 @@ export const TextField: React.FC<TextFieldProps> = ({
           </TouchableOpacity>
         )}
       </View>
+
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
@@ -113,15 +127,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.input,
-  },
-  inputContainerFocused: {
-    borderColor: colors.primary,
+    overflow: 'hidden',
+    minHeight: 56,
   },
   inputContainerError: {
     borderColor: colors.error,
   },
-  leftIcon: {
-    marginLeft: spacing.md,
+  leftIconBox: {
+    width: 56,
+    height: 56,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
@@ -131,7 +148,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   inputWithIcon: {
-    paddingLeft: spacing.sm,
+    paddingLeft: spacing.md,
   },
   eyeButton: {
     padding: spacing.md,

@@ -1,16 +1,8 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Linking,
-} from 'react-native';
+import React, { useState, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
@@ -24,6 +16,11 @@ type Props = AuthScreenProps<'RegisterStaff'>;
 export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof RegisterStaffFormData | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const {
     control,
@@ -43,12 +40,24 @@ export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const showError = (fieldName: keyof RegisterStaffFormData): string | undefined => {
+    if (focusedField === fieldName) return undefined;
     const value = watch(fieldName) || '';
     const isTouched = touchedFields[fieldName];
     const hasValue = value.trim().length > 0;
     const shouldShow = submitted || (isTouched && hasValue);
     return shouldShow ? errors[fieldName]?.message : undefined;
   };
+
+  const makeHandlers = (
+    fieldName: keyof RegisterStaffFormData,
+    rhfOnBlur: () => void,
+  ) => ({
+    onFocus: () => setFocusedField(fieldName),
+    onBlur: () => {
+      setFocusedField(null);
+      rhfOnBlur();
+    },
+  });
 
   const onValid = async (data: RegisterStaffFormData): Promise<void> => {
     setLoading(true);
@@ -81,147 +90,153 @@ export const RegisterStaffScreen: React.FC<Props> = ({ navigation }) => {
     setSubmitted(true);
   };
 
-  const openTerms = (): void => {
-    Linking.openURL('https://lopo.vn/terms');
-  };
-  const openPrivacy = (): void => {
-    Linking.openURL('https://lopo.vn/privacy');
-  };
-
   return (
-    <Screen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>ĐĂNG KÝ NHÂN VIÊN</Text>
-          </View>
+    <Screen scroll keyboardAvoiding>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
 
-          <Controller
-            control={control}
-            name="fullName"
-            render={({ field: { onChange, onBlur, value } }) => (
+      <View style={styles.form}>
+        <Text style={styles.title}>ĐĂNG KÝ</Text>
+
+        <Controller
+          control={control}
+          name="fullName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Họ và tên <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Họ và tên"
-                placeholder="Nhập họ và tên"
-                leftIconName="person-outline"
+                placeholder="Ví dụ: Nguyễn Văn A"
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('fullName')}
+                {...makeHandlers('fullName', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Số điện thoại <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Số điện thoại"
-                placeholder="Nhập số điện thoại"
+                placeholder="Ví dụ: 0365416XXX"
                 keyboardType="phone-pad"
-                leftIconName="call-outline"
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('phone')}
+                {...makeHandlers('phone', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, onBlur, value } }) => (
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Mật khẩu <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Mật khẩu"
-                placeholder="Nhập mật khẩu"
-                leftIconName="lock-closed-outline"
                 secureTextEntry
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('password')}
+                {...makeHandlers('password', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <Controller
-            control={control}
-            name="confirmPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
+        <Controller
+          control={control}
+          name="confirmPassword"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Nhập lại mật khẩu <Text style={styles.required}>*</Text>
+              </Text>
               <TextField
-                label="Nhập lại mật khẩu"
-                placeholder="Xác nhận mật khẩu"
-                leftIconName="lock-closed-outline"
                 secureTextEntry
                 value={value}
                 onChangeText={onChange}
-                onBlur={onBlur}
                 error={showError('confirmPassword')}
+                {...makeHandlers('confirmPassword', onBlur)}
               />
-            )}
-          />
+            </View>
+          )}
+        />
 
-          <View style={styles.buttonWrapper}>
-            <Button
-              title="Hoàn tất"
-              onPress={handleSubmit(onValid, onInvalid)}
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
+        <Button
+          title="Hoàn tất"
+          onPress={handleSubmit(onValid, onInvalid)}
+          loading={loading}
+          style={styles.submitButton}
+        />
 
-          <Text style={styles.termsText}>
-            Bằng việc đăng ký, bạn đồng ý với{' '}
-            <Text style={styles.linkText} onPress={openTerms}>
-              Điều khoản dịch vụ
-            </Text>{' '}
-            và{' '}
-            <Text style={styles.linkText} onPress={openPrivacy}>
-              Chính sách bảo mật
-            </Text>{' '}
-            của LOPO.
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeText}>
+            Khi chọn Hoàn tất đồng nghĩa với việc bạn đã chấp thuận các{' '}
+            <Text style={styles.noticeLink}>Điều khoản sử dụng</Text> và{' '}
+            <Text style={styles.noticeLink}>Chính sách bảo mật</Text> của chúng tôi.
           </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
   },
-  header: {
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+  form: {
+    flex: 1,
   },
   title: {
-    ...typography.h2,
+    ...typography.screenTitle,
     color: colors.primary,
-    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
-  buttonWrapper: {
+  fieldWrapper: {
+    marginBottom: spacing.sm,
+  },
+  label: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  required: {
+    color: colors.error,
+  },
+  submitButton: {
+    marginTop: spacing.md,
+  },
+  noticeBox: {
     marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: '#EAF1FF',
+    borderRadius: 10,
   },
-  termsText: {
+  noticeText: {
     ...typography.caption,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.lg,
     lineHeight: 18,
   },
-  linkText: {
-    color: colors.linkOrange,
+  noticeLink: {
+    color: colors.primary,
   },
 });

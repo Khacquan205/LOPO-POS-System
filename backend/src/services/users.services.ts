@@ -31,6 +31,18 @@ interface LoginReqBody {
 }
 
 class UsersService {
+  private serializeUser(user: unknown) {
+    const doc = user as { toObject?: () => Record<string, unknown> }
+    const raw = doc.toObject ? doc.toObject() : (user as Record<string, unknown>)
+    const normalizedUserId = String(raw.user_id ?? raw._id)
+    delete raw._id
+    delete raw.user_id
+    return {
+      user_id: normalizedUserId,
+      ...raw
+    }
+  }
+
   private async createStaffAccount(payload: RegisterStaffReqBody, store_id?: string) {
     const phoneExisted = await this.checkPhoneNumberExists(payload.phone_number)
     if (phoneExisted) {
@@ -61,7 +73,7 @@ class UsersService {
       access_token,
       refresh_token,
       staff: {
-        _id: staff._id,
+        user_id: String((staff as any).user_id ?? staff._id),
         full_name: staff.full_name,
         phone_number: staff.phone_number,
         role: staff.role,
@@ -122,6 +134,9 @@ class UsersService {
       owner_id: user._id
     })
 
+    store.qr_code = String((store as any).store_id ?? store._id)
+    await store.save()
+
     // Gán store_id cho owner
     user.store_id = store._id as any
     await user.save()
@@ -138,7 +153,7 @@ class UsersService {
       access_token,
       refresh_token,
       owner: {
-        _id: user._id,
+        user_id: String((user as any).user_id ?? user._id),
         full_name: user.full_name,
         phone_number: user.phone_number,
         role: user.role,
@@ -146,7 +161,7 @@ class UsersService {
         updated_at: user.updatedAt
       },
       store: {
-        _id: store._id,
+        store_id: String((store as any).store_id ?? store._id),
         name: store.name,
         owner_id: store.owner_id,
         created_at: store.createdAt,
@@ -222,7 +237,7 @@ class UsersService {
       access_token,
       refresh_token,
       user: {
-        _id: user._id,
+        user_id: String((user as any).user_id ?? user._id),
         full_name: user.full_name,
         phone_number: user.phone_number,
         role: user.role,
@@ -265,7 +280,48 @@ class UsersService {
         status: HTTP_STATUS.NOT_FOUND
       })
     }
-    return user
+    const serializedUser = this.serializeUser(user)
+    const normalizedStoreId = user.store_id ? String(user.store_id) : null
+    const { createdAt, updatedAt, ...profile } = serializedUser as Record<string, unknown>
+
+    return {
+      ...profile,
+      store_id: normalizedStoreId,
+      store_qr_code: normalizedStoreId,
+      createdAt,
+      updatedAt
+    }
+  }
+
+  async getStaffsInStore(owner_user_id: string) {
+    const owner = await User.findById(owner_user_id)
+    if (!owner || owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    if (!owner.store_id) {
+      throw new ErrorWithStatus({
+        message: 'Tài khoản chưa được liên kết với cửa hàng',
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    
+    const staffs = await User.find({ store_id: owner.store_id, role: UserRole.Staff })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean()
+    return staffs.map((item) => ({
+      user_id: item._id.toString(),
+      full_name: item.full_name,
+      phone_number: item.phone_number,
+      role: item.role,
+      store_id: item.store_id,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }))
   }
 }
 

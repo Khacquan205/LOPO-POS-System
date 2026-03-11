@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Button, TextField } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
@@ -15,6 +16,11 @@ type Props = AuthScreenProps<'RegisterOwner'>;
 export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<keyof RegisterOwnerFormData | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const {
     control,
@@ -35,12 +41,24 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const showError = (fieldName: keyof RegisterOwnerFormData): string | undefined => {
+    if (focusedField === fieldName) return undefined;
     const value = watch(fieldName) || '';
     const isTouched = touchedFields[fieldName];
     const hasValue = value.trim().length > 0;
     const shouldShow = submitted || (isTouched && hasValue);
     return shouldShow ? errors[fieldName]?.message : undefined;
   };
+
+  const makeHandlers = (
+    fieldName: keyof RegisterOwnerFormData,
+    rhfOnBlur: () => void,
+  ) => ({
+    onFocus: () => setFocusedField(fieldName),
+    onBlur: () => {
+      setFocusedField(null);
+      rhfOnBlur();
+    },
+  });
 
   const onValid = async (data: RegisterOwnerFormData): Promise<void> => {
     setLoading(true);
@@ -52,6 +70,7 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
         data.password,
         data.confirmPassword,
       );
+
       Alert.alert('Đăng ký thành công', 'Vui lòng đăng nhập để tiếp tục', [
         {
           text: 'Đăng nhập',
@@ -60,6 +79,7 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
       ]);
     } catch (error: any) {
       console.error('Register owner error:', error);
+
       if (error instanceof ApiError) {
         const detail = error.getFieldErrors();
         Alert.alert('Đăng ký thất bại', detail || 'Dữ liệu không hợp lệ');
@@ -77,19 +97,29 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <Screen scroll keyboardAvoiding>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+      </TouchableOpacity>
+
       <View style={styles.form}>
+        <Text style={styles.title}>ĐĂNG KÝ</Text>
+
         <Controller
           control={control}
           name="storeName"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              placeholder="Tên cửa hàng"
-              leftIconName="storefront-outline"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={showError('storeName')}
-            />
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Tên cửa hàng <Text style={styles.required}>*</Text>
+              </Text>
+              <TextField
+                placeholder="Ví dụ: Hồng Phát"
+                value={value}
+                onChangeText={onChange}
+                error={showError('storeName')}
+                {...makeHandlers('storeName', onBlur)}
+              />
+            </View>
           )}
         />
 
@@ -97,14 +127,18 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
           control={control}
           name="ownerName"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              placeholder="Tên chủ cửa hàng"
-              leftIconName="person-outline"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={showError('ownerName')}
-            />
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Tên chủ cửa hàng <Text style={styles.required}>*</Text>
+              </Text>
+              <TextField
+                placeholder="Ví dụ: Nguyễn Văn A"
+                value={value}
+                onChangeText={onChange}
+                error={showError('ownerName')}
+                {...makeHandlers('ownerName', onBlur)}
+              />
+            </View>
           )}
         />
 
@@ -112,15 +146,19 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
           control={control}
           name="phone"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              placeholder="Số điện thoại"
-              leftIconName="call-outline"
-              keyboardType="phone-pad"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={showError('phone')}
-            />
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Số điện thoại <Text style={styles.required}>*</Text>
+              </Text>
+              <TextField
+                placeholder="Ví dụ: 0365416XXX"
+                keyboardType="phone-pad"
+                value={value}
+                onChangeText={onChange}
+                error={showError('phone')}
+                {...makeHandlers('phone', onBlur)}
+              />
+            </View>
           )}
         />
 
@@ -128,15 +166,18 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
           control={control}
           name="password"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              placeholder="Mật khẩu"
-              leftIconName="lock-closed-outline"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={showError('password')}
-            />
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Mật khẩu <Text style={styles.required}>*</Text>
+              </Text>
+              <TextField
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                error={showError('password')}
+                {...makeHandlers('password', onBlur)}
+              />
+            </View>
           )}
         />
 
@@ -144,15 +185,18 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
           control={control}
           name="confirmPassword"
           render={({ field: { onChange, onBlur, value } }) => (
-            <TextField
-              placeholder="Nhập lại mật khẩu"
-              leftIconName="lock-closed-outline"
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={showError('confirmPassword')}
-            />
+            <View style={styles.fieldWrapper}>
+              <Text style={styles.label}>
+                Nhập lại mật khẩu <Text style={styles.required}>*</Text>
+              </Text>
+              <TextField
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                error={showError('confirmPassword')}
+                {...makeHandlers('confirmPassword', onBlur)}
+              />
+            </View>
           )}
         />
 
@@ -163,15 +207,12 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
           style={styles.submitButton}
         />
 
-        <View style={styles.termsContainer}>
-          <Text style={styles.termsText}>Bằng việc đăng ký, bạn đồng ý với </Text>
-          <TouchableOpacity>
-            <Text style={styles.termsLink}>Điều khoản sử dụng</Text>
-          </TouchableOpacity>
-          <Text style={styles.termsText}> và </Text>
-          <TouchableOpacity>
-            <Text style={styles.termsLink}>Chính sách bảo mật</Text>
-          </TouchableOpacity>
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeText}>
+            Khi chọn Hoàn tất đồng nghĩa với việc bạn đã chấp thuận các{' '}
+            <Text style={styles.noticeLink}>Điều khoản sử dụng</Text> và{' '}
+            <Text style={styles.noticeLink}>Chính sách bảo mật</Text> của chúng tôi.
+          </Text>
         </View>
       </View>
     </Screen>
@@ -179,26 +220,47 @@ export const RegisterOwnerScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
   form: {
     flex: 1,
-    paddingTop: spacing.md,
+  },
+  title: {
+    ...typography.screenTitle,
+    color: colors.primary,
+    marginBottom: spacing.xl,
+  },
+  fieldWrapper: {
+    marginBottom: spacing.sm,
+  },
+  label: {
+    ...typography.bodyMedium,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  required: {
+    color: colors.error,
   },
   submitButton: {
     marginTop: spacing.md,
   },
-  termsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  noticeBox: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
+    padding: spacing.md,
+    backgroundColor: '#EAF1FF',
+    borderRadius: 10,
   },
-  termsText: {
+  noticeText: {
     ...typography.caption,
     color: colors.textSecondary,
+    lineHeight: 18,
   },
-  termsLink: {
-    ...typography.caption,
+  noticeLink: {
     color: colors.primary,
   },
 });

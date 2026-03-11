@@ -32,6 +32,10 @@ const openApiSpec = {
     {
       name: 'Orders',
       description: 'Quản lý đơn hàng bán (cả owner và staff)'
+    },
+    {
+      name: 'Stores',
+      description: 'Quản lý QR cửa hàng và duyệt yêu cầu nhân viên tham gia'
     }
   ],
   components: {
@@ -226,7 +230,7 @@ const openApiSpec = {
       MeResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string' },
+          user_id: { type: 'string' },
           full_name: { type: 'string' },
           phone_number: { type: 'string' },
           role: { type: 'string', enum: ['owner', 'staff'] },
@@ -252,7 +256,7 @@ const openApiSpec = {
       CategoryResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2d' },
+          category_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2d' },
           store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
           name: { type: 'string', example: 'Đồ uống' },
           is_active: { type: 'boolean', example: true },
@@ -270,6 +274,13 @@ const openApiSpec = {
           barcode: { type: 'string', example: '8936001234567' },
           image_url: { type: 'string', format: 'uri', example: 'https://example.com/image.jpg' },
           track_inventory: { type: 'boolean', example: false },
+          on_hand: {
+            type: 'integer',
+            minimum: 0,
+            example: 20,
+            description:
+              'Số lượng tồn kho khởi tạo. Chỉ hợp lệ khi track_inventory = true. Nếu track_inventory = false mà on_hand > 0 sẽ trả 422.'
+          },
           is_active: { type: 'boolean', example: true }
         }
       },
@@ -282,13 +293,20 @@ const openApiSpec = {
           barcode: { type: 'string', example: '8936001234567' },
           image_url: { type: 'string', format: 'uri', example: 'https://example.com/image.jpg' },
           track_inventory: { type: 'boolean', example: false },
+          on_hand: {
+            type: 'integer',
+            minimum: 0,
+            example: 15,
+            description:
+              'Số lượng tồn kho cần cập nhật. Nếu trạng thái track_inventory sau cập nhật = false thì chỉ cho phép on_hand = 0.'
+          },
           is_active: { type: 'boolean', example: false }
         }
       },
       ProductResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2e' },
+          product_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2e' },
           store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
           category_id: { type: 'string', nullable: true, example: '67c2f0ef8f3f2f2f2f2f2f2d' },
           name: { type: 'string', example: 'Trà sữa trân châu' },
@@ -296,6 +314,7 @@ const openApiSpec = {
           barcode: { type: 'string', nullable: true, example: '8936001234567' },
           image_url: { type: 'string', nullable: true, example: 'https://example.com/image.jpg' },
           track_inventory: { type: 'boolean', example: false },
+          on_hand: { type: 'integer', minimum: 0, example: 25 },
           is_active: { type: 'boolean', example: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' }
@@ -311,7 +330,7 @@ const openApiSpec = {
       InventoryStockResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f30' },
+          inventory_stock_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f30' },
           store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
           product_id: { type: 'object', description: 'Thông tin sản phẩm (populated)' },
           on_hand: { type: 'integer', example: 25 },
@@ -319,7 +338,7 @@ const openApiSpec = {
           updatedAt: { type: 'string', format: 'date-time' }
         }
       },
-      CreateOrderRequest: {
+      UpdateOrderItemsRequest: {
         type: 'object',
         required: ['items'],
         properties: {
@@ -334,16 +353,21 @@ const openApiSpec = {
                 quantity: { type: 'integer', minimum: 1, example: 2 }
               }
             }
-          },
-          note: { type: 'string', nullable: true, example: 'Khách mang về' },
+          }
+        }
+      },
+      CheckoutOrderRequest: {
+        type: 'object',
+        properties: {
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
-          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' }
+          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
+          note: { type: 'string', nullable: true, example: 'Khách mang về' }
         }
       },
       OrderResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
+          order_id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
           store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
           order_code: { type: 'string', example: 'OD123456789012' },
           cashier_user_id: { type: 'string', example: '67b2f0ef8f3f2f2f2f2f2f2b' },
@@ -360,7 +384,7 @@ const openApiSpec = {
       OrderItemResult: {
         type: 'object',
         properties: {
-          _id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2d' },
+          order_item_id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2d' },
           order_id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
           product_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2e' },
           product_name_snapshot: { type: 'string', example: 'Trà sữa trân châu' },
@@ -369,6 +393,32 @@ const openApiSpec = {
           quantity: { type: 'integer', example: 2 },
           line_total: { type: 'number', example: 70000 },
           createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      JoinByQrRequest: {
+        type: 'object',
+        required: ['qr_code'],
+        properties: {
+          qr_code: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' }
+        }
+      },
+      StoreQrResult: {
+        type: 'object',
+        properties: {
+          store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
+          store_name: { type: 'string', example: 'LOPO Mart Quận 1' },
+          qr_code: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' }
+        }
+      },
+      JoinRequestResult: {
+        type: 'object',
+        properties: {
+          request_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f20' },
+          staff_user_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2b' },
+          staff_full_name: { type: 'string', nullable: true, example: 'Nguyen Van A' },
+          staff_phone_number: { type: 'string', nullable: true, example: '0901234567' },
+          status: { type: 'string', enum: ['pending', 'approved', 'rejected'], example: 'pending' },
+          requested_at: { type: 'string', format: 'date-time' }
         }
       }
     }
@@ -425,6 +475,49 @@ const openApiSpec = {
       }
     },
     '/api/users/staff': {
+      get: {
+        tags: ['Users'],
+        summary: 'Owner lấy danh sách staff trong cửa hàng',
+        description: 'Dựa vào store_id của owner để lấy tất cả staff thuộc store đó.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lấy danh sách nhân viên thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Lấy danh sách nhân viên thành công' },
+                    result: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          user_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2b' },
+                          full_name: { type: 'string', example: 'Nguyen Van Staff' },
+                          phone_number: { type: 'string', example: '0912345678' },
+                          role: { type: 'string', enum: ['staff'] },
+                          store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
+                          status: { type: 'string', enum: ['active', 'inactive', 'blocked'] },
+                          createdAt: { type: 'string', format: 'date-time' },
+                          updatedAt: { type: 'string', format: 'date-time' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': {
+            description: 'Thiếu hoặc sai access token'
+          },
+          '403': {
+            description: 'Không phải owner hoặc tài khoản chưa liên kết cửa hàng'
+          }
+        }
+      },
       post: {
         tags: ['Users'],
         summary: 'Owner tạo tài khoản staff',
@@ -603,7 +696,7 @@ const openApiSpec = {
         }
       }
     },
-    '/api/categories/{id}': {
+    '/api/categories/{category_id}': {
       put: {
         tags: ['Categories'],
         summary: 'Cập nhật danh mục',
@@ -611,11 +704,11 @@ const openApiSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'category_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của danh mục'
+            description: 'category_id của danh mục'
           }
         ],
         requestBody: {
@@ -653,11 +746,11 @@ const openApiSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'category_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của danh mục'
+            description: 'category_id của danh mục'
           }
         ],
         responses: {
@@ -691,7 +784,8 @@ const openApiSpec = {
       post: {
         tags: ['Products'],
         summary: 'Tạo sản phẩm mới',
-        description: 'Tạo một sản phẩm mới cho cửa hàng. Nếu có category_id thì phải thuộc cùng cửa hàng.',
+        description:
+          'Tạo một sản phẩm mới cho cửa hàng. Nếu có category_id thì phải thuộc cùng cửa hàng. Có thể gửi on_hand để tạo tồn kho ban đầu khi track_inventory = true.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -706,22 +800,22 @@ const openApiSpec = {
           '400': { description: 'Danh mục không thuộc cửa hàng này' },
           '401': { description: 'Thiếu hoặc sai access token' },
           '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
-          '422': { description: 'Dữ liệu không hợp lệ' }
+          '422': { description: 'Dữ liệu không hợp lệ (ví dụ: on_hand > 0 khi track_inventory = false)' }
         }
       }
     },
-    '/api/products/{id}': {
+    '/api/products/{product_id}': {
       get: {
         tags: ['Products'],
         summary: 'Lấy chi tiết sản phẩm',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'product_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của sản phẩm'
+            description: 'product_id của sản phẩm'
           }
         ],
         responses: {
@@ -737,11 +831,11 @@ const openApiSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'product_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của sản phẩm'
+            description: 'product_id của sản phẩm'
           }
         ],
         requestBody: {
@@ -767,11 +861,11 @@ const openApiSpec = {
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'product_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của sản phẩm'
+            description: 'product_id của sản phẩm'
           }
         ],
         responses: {
@@ -861,37 +955,28 @@ const openApiSpec = {
       },
       post: {
         tags: ['Orders'],
-        summary: 'Tạo đơn hàng và trừ tồn kho',
+        summary: 'Tạo đơn nháp (Flow 1 - Bước 3)',
+        description: 'Sinh mã đơn hàng và tạo đơn ở trạng thái Draft. Không cần body.',
         security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/CreateOrderRequest' }
-            }
-          }
-        },
         responses: {
-          '201': { description: 'Tạo đơn hàng thành công' },
-          '400': { description: 'Sản phẩm không hợp lệ hoặc không đủ tồn kho' },
+          '201': { description: 'Tạo đơn nháp thành công' },
           '401': { description: 'Thiếu hoặc sai access token' },
-          '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
-          '422': { description: 'Dữ liệu không hợp lệ' }
+          '403': { description: 'Tài khoản chưa liên kết cửa hàng' }
         }
       }
     },
-    '/api/orders/{id}': {
+    '/api/orders/{order_id}': {
       get: {
         tags: ['Orders'],
         summary: 'Lấy chi tiết đơn hàng',
         security: [{ bearerAuth: [] }],
         parameters: [
           {
-            name: 'id',
+            name: 'order_id',
             in: 'path',
             required: true,
             schema: { type: 'string' },
-            description: 'ID của đơn hàng'
+            description: 'order_id của đơn hàng'
           }
         ],
         responses: {
@@ -899,6 +984,195 @@ const openApiSpec = {
           '401': { description: 'Thiếu hoặc sai access token' },
           '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
           '404': { description: 'Không tìm thấy đơn hàng' }
+        }
+      }
+    },
+    '/api/orders/{order_id}/items': {
+      put: {
+        tags: ['Orders'],
+        summary: 'Cập nhật giỏ hàng của đơn nháp (Flow 1 - Bước 4)',
+        description: 'Thay thế toàn bộ items của đơn nháp. Tính lại grand_total. Chỉ hoạt động khi status=draft.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'order_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'order_id của đơn hàng'
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/UpdateOrderItemsRequest' }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Cập nhật giỏ hàng thành công' },
+          '400': { description: 'Đơn không ở trạng thái nháp hoặc sản phẩm không hợp lệ' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
+          '404': { description: 'Không tìm thấy đơn hàng' },
+          '422': { description: 'Dữ liệu không hợp lệ' }
+        }
+      }
+    },
+    '/api/orders/{order_id}/checkout': {
+      post: {
+        tags: ['Orders'],
+        summary: 'Thanh toán đơn nháp → Completed (Flow 1 - Bước 4)',
+        description:
+          'Xác nhận thanh toán, trừ tồn kho cho sản phẩm track_inventory=true. Chỉ hoạt động khi status=draft và đơn có ít nhất 1 sản phẩm.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'order_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'order_id của đơn hàng'
+          }
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/CheckoutOrderRequest' }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Thanh toán thành công' },
+          '400': { description: 'Đơn không hợp lệ, chưa có sản phẩm, hoặc không đủ tồn kho' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
+          '404': { description: 'Không tìm thấy đơn hàng' }
+        }
+      }
+    },
+    '/api/orders/{order_id}/cancel': {
+      patch: {
+        tags: ['Orders'],
+        summary: 'Hủy đơn nháp (Flow 2)',
+        description: 'Chỉ có thể hủy đơn ở trạng thái Draft. Đơn Completed không thể hủy.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'order_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'order_id của đơn hàng'
+          }
+        ],
+        responses: {
+          '200': { description: 'Hủy đơn hàng thành công' },
+          '400': { description: 'Đơn đã bị hủy hoặc đã hoàn thành' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
+          '404': { description: 'Không tìm thấy đơn hàng' }
+        }
+      }
+    },
+    '/api/stores/qr-code': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Tạo hoặc làm mới QR cửa hàng',
+        description: 'Chỉ owner của cửa hàng mới có quyền tạo QR. QR hiện tại chứa store_id.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '201': { description: 'Tạo QR cửa hàng thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không đủ quyền owner' },
+          '404': { description: 'Không tìm thấy cửa hàng của owner' }
+        }
+      }
+    },
+    '/api/stores/join-by-qr': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Nhân viên quét QR để gửi yêu cầu tham gia cửa hàng',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/JoinByQrRequest' }
+            }
+          }
+        },
+        responses: {
+          '201': { description: 'Gửi yêu cầu tham gia cửa hàng thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Chỉ staff chưa thuộc cửa hàng mới dùng được' },
+          '404': { description: 'Không tìm thấy cửa hàng từ QR code' },
+          '409': { description: 'Đã có yêu cầu chờ duyệt hoặc staff đã thuộc cửa hàng' },
+          '422': { description: 'Dữ liệu không hợp lệ' }
+        }
+      }
+    },
+    '/api/stores/join-requests/pending': {
+      get: {
+        tags: ['Stores'],
+        summary: 'Owner lấy danh sách yêu cầu tham gia đang chờ duyệt',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Lấy danh sách pending thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không đủ quyền owner' },
+          '404': { description: 'Không tìm thấy cửa hàng của owner' }
+        }
+      }
+    },
+    '/api/stores/join-requests/{request_id}/approve': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Owner duyệt yêu cầu tham gia cửa hàng của staff',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'request_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'request_id của yêu cầu tham gia'
+          }
+        ],
+        responses: {
+          '200': { description: 'Duyệt yêu cầu thành công' },
+          '400': { description: 'Yêu cầu không ở trạng thái pending' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không đủ quyền owner' },
+          '404': { description: 'Không tìm thấy request hoặc cửa hàng' },
+          '409': { description: 'Nhân viên đã thuộc cửa hàng khác' },
+          '422': { description: 'request_id không hợp lệ' }
+        }
+      }
+    },
+    '/api/stores/join-requests/{request_id}/reject': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Owner từ chối yêu cầu tham gia cửa hàng của staff',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'request_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'request_id của yêu cầu tham gia'
+          }
+        ],
+        responses: {
+          '200': { description: 'Từ chối yêu cầu thành công' },
+          '400': { description: 'Yêu cầu không ở trạng thái pending' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không đủ quyền owner' },
+          '404': { description: 'Không tìm thấy request hoặc cửa hàng' },
+          '422': { description: 'request_id không hợp lệ' }
         }
       }
     }

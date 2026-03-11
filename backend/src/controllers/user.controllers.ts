@@ -53,6 +53,15 @@ export const meController = async (req: Request, res: Response) => {
   })
 }
 
+export const getStaffsController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const result = await usersService.getStaffsInStore(owner_user_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.GET_STAFFS_SUCCESS,
+    result
+  })
+}
+
 export const refreshTokenController = async (req: Request, res: Response) => {
   const { refresh_token } = req.body
   const result = await usersService.refreshToken(refresh_token)
