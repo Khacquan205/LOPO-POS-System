@@ -33,3 +33,9 @@ export enum PaymentStatus {
   Failed = 'failed',
   Refunded = 'refunded'
 }
+
+export enum JoinRequestStatus {
+  Pending = 'pending',
+  Approved = 'approved',
+  Rejected = 'rejected'
+}

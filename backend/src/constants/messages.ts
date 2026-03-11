@@ -38,6 +38,7 @@ export const CATEGORIES_MESSAGES = {
   IS_ACTIVE_MUST_BE_BOOLEAN: 'Trạng thái phải là true hoặc false',
   CATEGORY_NOT_FOUND: 'Không tìm thấy danh mục',
   GET_CATEGORIES_SUCCESS: 'Lấy danh sách danh mục thành công',
+  GET_CATEGORY_SUCCESS: 'Lấy thông tin danh mục thành công',
   CREATE_CATEGORY_SUCCESS: 'Tạo danh mục thành công',
   UPDATE_CATEGORY_SUCCESS: 'Cập nhật danh mục thành công',
   DELETE_CATEGORY_SUCCESS: 'Xóa danh mục thành công'
@@ -53,6 +54,8 @@ export const PRODUCTS_MESSAGES = {
   IMAGE_URL_MUST_BE_URL: 'Đường dẫn hình ảnh không hợp lệ',
   IS_ACTIVE_MUST_BE_BOOLEAN: 'Trạng thái phải là true hoặc false',
   TRACK_INVENTORY_MUST_BE_BOOLEAN: 'track_inventory phải là true hoặc false',
+  ON_HAND_MUST_BE_NON_NEGATIVE_INT: 'on_hand phải là số nguyên không âm',
+  ON_HAND_REQUIRES_TRACK_INVENTORY: 'Chỉ được gửi on_hand > 0 khi track_inventory = true',
   CATEGORY_ID_MUST_BE_MONGO_ID: 'category_id không hợp lệ',
   CATEGORY_NOT_BELONG_TO_STORE: 'Danh mục không thuộc cửa hàng này',
   PRODUCT_NOT_FOUND: 'Không tìm thấy sản phẩm',
@@ -85,7 +88,34 @@ export const ORDERS_MESSAGES = {
   PAYMENT_STATUS_IS_INVALID: 'Trạng thái thanh toán không hợp lệ',
   ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng',
   PRODUCT_NOT_FOUND: 'Có sản phẩm không tồn tại hoặc không thuộc cửa hàng',
+  ORDER_MUST_BE_DRAFT: 'Đơn hàng phải ở trạng thái nháp để thực hiện thao tác này',
+  ORDER_HAS_NO_ITEMS: 'Đơn hàng chưa có sản phẩm nào',
+  ORDER_ALREADY_CANCELLED: 'Đơn hàng đã bị hủy',
+  ORDER_ALREADY_COMPLETED: 'Đơn hàng đã hoàn thành, không thể hủy',
   GET_ORDERS_SUCCESS: 'Lấy danh sách đơn hàng thành công',
   GET_ORDER_SUCCESS: 'Lấy chi tiết đơn hàng thành công',
-  CREATE_ORDER_SUCCESS: 'Tạo đơn hàng thành công'
+  CREATE_ORDER_SUCCESS: 'Tạo đơn hàng nháp thành công',
+  UPDATE_ORDER_ITEMS_SUCCESS: 'Cập nhật giỏ hàng thành công',
+  CHECKOUT_ORDER_SUCCESS: 'Thanh toán đơn hàng thành công',
+  CANCEL_ORDER_SUCCESS: 'Hủy đơn hàng thành công'
+} as const
+
+export const STORES_MESSAGES = {
+  QR_CODE_IS_REQUIRED: 'qr_code là bắt buộc',
+  QR_CODE_MUST_BE_STRING: 'qr_code phải là chuỗi',
+  REQUEST_ID_MUST_BE_MONGO_ID: 'request_id không hợp lệ',
+  ONLY_OWNER_CAN_GENERATE_QR: 'Chỉ chủ cửa hàng mới có quyền tạo QR',
+  ONLY_STAFF_CAN_JOIN_BY_QR: 'Chỉ nhân viên mới có thể quét QR để tham gia cửa hàng',
+  ONLY_OWNER_CAN_REVIEW_JOIN_REQUESTS: 'Chỉ chủ cửa hàng mới có quyền duyệt yêu cầu tham gia',
+  OWNER_STORE_NOT_FOUND: 'Không tìm thấy cửa hàng của chủ cửa hàng',
+  STORE_NOT_FOUND_BY_QR: 'Không tìm thấy cửa hàng từ QR code',
+  STAFF_ALREADY_IN_STORE: 'Nhân viên đã thuộc một cửa hàng',
+  STAFF_JOIN_REQUEST_ALREADY_PENDING: 'Nhân viên đã có yêu cầu tham gia đang chờ duyệt',
+  JOIN_REQUEST_NOT_FOUND: 'Không tìm thấy yêu cầu tham gia',
+  JOIN_REQUEST_NOT_PENDING: 'Yêu cầu tham gia không còn ở trạng thái chờ duyệt',
+  GENERATE_STORE_QR_SUCCESS: 'Tạo QR cửa hàng thành công',
+  REQUEST_JOIN_STORE_SUCCESS: 'Gửi yêu cầu tham gia cửa hàng thành công',
+  GET_PENDING_JOIN_REQUESTS_SUCCESS: 'Lấy danh sách yêu cầu tham gia đang chờ duyệt thành công',
+  APPROVE_JOIN_REQUEST_SUCCESS: 'Duyệt yêu cầu tham gia thành công',
+  REJECT_JOIN_REQUEST_SUCCESS: 'Từ chối yêu cầu tham gia thành công'
 } as const

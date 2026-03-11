@@ -32,6 +32,20 @@ export const createProductValidator = validate(
         optional: true,
         isBoolean: { errorMessage: PRODUCTS_MESSAGES.TRACK_INVENTORY_MUST_BE_BOOLEAN }
       },
+      on_hand: {
+        optional: true,
+        isInt: { options: { min: 0 }, errorMessage: PRODUCTS_MESSAGES.ON_HAND_MUST_BE_NON_NEGATIVE_INT },
+        custom: {
+          options: (value, { req }) => {
+            const parsedOnHand = Number(value)
+            const isTracking = req.body.track_inventory === true || req.body.track_inventory === 'true'
+            if (!isTracking && parsedOnHand > 0) {
+              throw new Error(PRODUCTS_MESSAGES.ON_HAND_REQUIRES_TRACK_INVENTORY)
+            }
+            return true
+          }
+        }
+      },
       is_active: {
         optional: true,
         isBoolean: { errorMessage: PRODUCTS_MESSAGES.IS_ACTIVE_MUST_BE_BOOLEAN }
@@ -71,6 +85,20 @@ export const updateProductValidator = validate(
       track_inventory: {
         optional: true,
         isBoolean: { errorMessage: PRODUCTS_MESSAGES.TRACK_INVENTORY_MUST_BE_BOOLEAN }
+      },
+      on_hand: {
+        optional: true,
+        isInt: { options: { min: 0 }, errorMessage: PRODUCTS_MESSAGES.ON_HAND_MUST_BE_NON_NEGATIVE_INT },
+        custom: {
+          options: (value, { req }) => {
+            const parsedOnHand = Number(value)
+            const isTrackingExplicitFalse = req.body.track_inventory === false || req.body.track_inventory === 'false'
+            if (isTrackingExplicitFalse && parsedOnHand > 0) {
+              throw new Error(PRODUCTS_MESSAGES.ON_HAND_REQUIRES_TRACK_INVENTORY)
+            }
+            return true
+          }
+        }
       },
       is_active: {
         optional: true,
