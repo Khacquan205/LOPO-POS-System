@@ -5,7 +5,7 @@ import { validate } from '~/utils/validation.js'
 import usersService from '~/services/users.services.js'
 import { verifyToken } from '~/utils/jwt.js'
 import { envConfig } from '~/config/index.js'
-import { TokenType, UserRole } from '~/constants/enum.js'
+import { TokenType, UserRole, UserStatus } from '~/constants/enum.js'
 import { ErrorWithStatus } from './error.middlewares.js'
 import HTTP_STATUS from '~/constants/httpStatus.js'
 
@@ -168,3 +168,24 @@ export const ownerOnlyValidator = (req: Request, res: Response, next: NextFuncti
   }
   return next()
 }
+
+export const updateStaffStatusValidator = validate(
+  checkSchema(
+    {
+      staff_id: {
+        in: ['params'],
+        notEmpty: { errorMessage: 'staff_id là bắt buộc' },
+        isMongoId: { errorMessage: 'staff_id không hợp lệ' }
+      },
+      status: {
+        in: ['body'],
+        notEmpty: { errorMessage: 'status là bắt buộc' },
+        isIn: {
+          options: [[UserStatus.Active, UserStatus.Inactive]],
+          errorMessage: `status chỉ nhận 'active' hoặc 'inactive'`
+        }
+      }
+    },
+    ['params', 'body']
+  )
+)

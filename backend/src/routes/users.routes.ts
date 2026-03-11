@@ -7,7 +7,8 @@ import {
   registerStaffPublicController,
   registerStaffController,
   registerController,
-  getStaffsController
+  getStaffsController,
+  updateStaffStatusController
 } from '~/controllers/user.controllers.js'
 import {
   accessTokenValidator,
@@ -15,7 +16,8 @@ import {
   ownerOnlyValidator,
   registerOwnerValidator,
   registerStaffValidator,
-  refreshTokenValidator
+  refreshTokenValidator,
+  updateStaffStatusValidator
 } from '~/middlewares/users.middlewares.js'
 import { wrapRequestHandler } from '~/utils/handlers.js'
 
@@ -23,8 +25,15 @@ const usersRouter = Router()
 
 usersRouter.post('/register-owner', registerOwnerValidator, wrapRequestHandler(registerController))
 usersRouter.post('/register-staff', registerStaffValidator, wrapRequestHandler(registerStaffPublicController))
-usersRouter.post('/staff', accessTokenValidator, registerStaffValidator, wrapRequestHandler(registerStaffController))
-usersRouter.get('/staff', accessTokenValidator, ownerOnlyValidator, wrapRequestHandler(getStaffsController))
+
+// New owner-only route (shown in Swagger)
+usersRouter.post('/owner/staff', accessTokenValidator, ownerOnlyValidator, registerStaffValidator, wrapRequestHandler(registerStaffController))
+// Keep old route as alias to avoid breaking existing clients
+usersRouter.post('/staff', accessTokenValidator, ownerOnlyValidator, registerStaffValidator, wrapRequestHandler(registerStaffController))
+
+usersRouter.get('/owner/staff-list', accessTokenValidator, ownerOnlyValidator, wrapRequestHandler(getStaffsController))
+usersRouter.patch('/owner/staff/:staff_id/status', accessTokenValidator, ownerOnlyValidator, updateStaffStatusValidator, wrapRequestHandler(updateStaffStatusController))
+
 usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
 usersRouter.post('/logout', accessTokenValidator, refreshTokenValidator, wrapRequestHandler(logoutController))
 usersRouter.post('/refresh-token', refreshTokenValidator, wrapRequestHandler(refreshTokenController))

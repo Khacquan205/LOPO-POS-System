@@ -28,7 +28,8 @@ export const USERS_MESSAGES = {
   ACCESS_TOKEN_IS_REQUIRED: 'Access token là bắt buộc',
   REFRESH_TOKEN_IS_REQUIRED: 'Refresh token là bắt buộc',
   REFRESH_TOKEN_IS_INVALID: 'Refresh token không hợp lệ',
-  REFRESH_TOKEN_SUCCESS: 'Làm mới token thành công'
+  REFRESH_TOKEN_SUCCESS: 'Làm mới token thành công',
+  UPDATE_STAFF_STATUS_SUCCESS: 'Cập nhật trạng thái nhân viên thành công'
 } as const
 
 export const CATEGORIES_MESSAGES = {

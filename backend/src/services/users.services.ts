@@ -323,6 +323,48 @@ class UsersService {
       updatedAt: item.updatedAt
     }))
   }
+
+  async updateStaffStatus(owner_user_id: string, staff_id: string, status: UserStatus) {
+    const owner = await User.findById(owner_user_id)
+    if (!owner || owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    if (!owner.store_id) {
+      throw new ErrorWithStatus({
+        message: 'Tài khoản chưa được liên kết với cửa hàng',
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+
+    const staff = await User.findOne({
+      _id: new Types.ObjectId(staff_id),
+      role: UserRole.Staff,
+      store_id: owner.store_id
+    })
+    if (!staff) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.USER_NOT_FOUND,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    staff.status = status
+    await staff.save()
+
+    return {
+      user_id: staff._id.toString(),
+      full_name: staff.full_name,
+      phone_number: staff.phone_number,
+      role: staff.role,
+      store_id: staff.store_id,
+      status: staff.status,
+      createdAt: staff.createdAt,
+      updatedAt: staff.updatedAt
+    }
+  }
 }
 
 const usersService = new UsersService()
