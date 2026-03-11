@@ -280,7 +280,12 @@ class UsersService {
         status: HTTP_STATUS.NOT_FOUND
       })
     }
-    return this.serializeUser(user)
+    const normalizedStoreId = user.store_id ? String(user.store_id) : null
+    return {
+      ...this.serializeUser(user),
+      store_id: normalizedStoreId,
+      store_qr_code: normalizedStoreId
+    }
   }
 }
 

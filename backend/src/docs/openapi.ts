@@ -234,6 +234,8 @@ const openApiSpec = {
           full_name: { type: 'string' },
           phone_number: { type: 'string' },
           role: { type: 'string', enum: ['owner', 'staff'] },
+          store_id: { type: 'string', nullable: true },
+          store_qr_code: { type: 'string', nullable: true, description: 'Giống store_id nếu user đã thuộc cửa hàng' },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' }
         }
