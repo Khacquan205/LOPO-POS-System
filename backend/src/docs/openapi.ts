@@ -135,7 +135,7 @@ const openApiSpec = {
         properties: {
           phone_number: {
             type: 'string',
-            example: '0901234567'
+            example: '0123456789'
           },
           password: {
             type: 'string',
