@@ -1,7 +1,13 @@
-import { Schema, model, type InferSchemaType } from 'mongoose'
+import { Schema, Types, model, type InferSchemaType } from 'mongoose'
 
 const inventoryStockSchema = new Schema(
   {
+    inventory_stock_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      default: () => new Types.ObjectId()
+    },
     store_id: {
       type: Schema.Types.ObjectId,
       required: true,

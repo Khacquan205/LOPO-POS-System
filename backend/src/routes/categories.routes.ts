@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   getCategoriesController,
+  getCategoryController,
   createCategoryController,
   updateCategoryController,
   deleteCategoryController
@@ -13,13 +14,14 @@ const categoriesRouter = Router()
 
 // Tất cả routes yêu cầu đăng nhập (cả owner và staff đều dùng được)
 categoriesRouter.get('/', accessTokenValidator, wrapRequestHandler(getCategoriesController))
+categoriesRouter.get('/:category_id', accessTokenValidator, wrapRequestHandler(getCategoryController))
 categoriesRouter.post('/', accessTokenValidator, createCategoryValidator, wrapRequestHandler(createCategoryController))
 categoriesRouter.put(
-  '/:id',
+  '/:category_id',
   accessTokenValidator,
   updateCategoryValidator,
   wrapRequestHandler(updateCategoryController)
 )
-categoriesRouter.delete('/:id', accessTokenValidator, wrapRequestHandler(deleteCategoryController))
+categoriesRouter.delete('/:category_id', accessTokenValidator, wrapRequestHandler(deleteCategoryController))
 
 export default categoriesRouter

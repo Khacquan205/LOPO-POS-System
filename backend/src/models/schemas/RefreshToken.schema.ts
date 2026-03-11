@@ -1,7 +1,13 @@
-import { Schema, model, type InferSchemaType } from 'mongoose'
+import { Schema, Types, model, type InferSchemaType } from 'mongoose'
 
 const refreshTokenSchema = new Schema(
   {
+    refresh_token_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      default: () => new Types.ObjectId()
+    },
     user_id: {
       type: Schema.Types.ObjectId,
       required: true,

@@ -3,7 +3,8 @@ import { validate } from '~/utils/validation.js'
 import { ORDERS_MESSAGES } from '~/constants/messages.js'
 import { PaymentMethod, PaymentStatus } from '~/constants/enum.js'
 
-export const createOrderValidator = validate(
+// Validator cho PUT /:id/items — cập nhật giỏ hàng của đơn nháp
+export const updateOrderItemsValidator = validate(
   checkSchema(
     {
       items: {
@@ -16,12 +17,16 @@ export const createOrderValidator = validate(
       },
       'items.*.quantity': {
         isInt: { options: { min: 1 }, errorMessage: ORDERS_MESSAGES.ORDER_ITEM_QUANTITY_MUST_BE_POSITIVE_INT }
-      },
-      note: {
-        optional: true,
-        isString: { errorMessage: ORDERS_MESSAGES.NOTE_MUST_BE_STRING },
-        trim: true
-      },
+      }
+    },
+    ['body']
+  )
+)
+
+// Validator cho POST /:id/checkout — thanh toán
+export const checkoutOrderValidator = validate(
+  checkSchema(
+    {
       payment_method: {
         optional: true,
         isIn: { options: [Object.values(PaymentMethod)], errorMessage: ORDERS_MESSAGES.PAYMENT_METHOD_IS_INVALID }
@@ -29,6 +34,11 @@ export const createOrderValidator = validate(
       payment_status: {
         optional: true,
         isIn: { options: [Object.values(PaymentStatus)], errorMessage: ORDERS_MESSAGES.PAYMENT_STATUS_IS_INVALID }
+      },
+      note: {
+        optional: true,
+        isString: { errorMessage: ORDERS_MESSAGES.NOTE_MUST_BE_STRING },
+        trim: true
       }
     },
     ['body']
