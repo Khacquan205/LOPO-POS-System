@@ -346,7 +346,7 @@ const openApiSpec = {
           _id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
           store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
           order_code: { type: 'string', example: 'OD123456789012' },
-          cashier_user_id: { type: 'string', example: '67b2f0ef8f3f2f2f2f2f2f2b' },
+          cashier_user_id: { type: 'string', example: '67b2f0ef8f3f2f2f2f2f2b' },
           status: { type: 'string', enum: ['draft', 'completed', 'cancelled'], example: 'completed' },
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
           payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
@@ -425,6 +425,122 @@ const openApiSpec = {
       }
     },
     '/api/users/staff': {
+      post: {
+        tags: ['Users'],
+        summary: 'Owner tạo tài khoản staff (deprecated)',
+        description: '⚠️ Deprecated – dùng POST /api/users/owner/staff thay thế. Route này vẫn hoạt động như alias.',
+        deprecated: true,
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/RegisterStaffRequest'
+              }
+            }
+          }
+        },
+        responses: {
+          '201': { description: 'Tạo tài khoản nhân viên thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không phải owner' },
+          '422': { description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại' }
+        }
+      }
+    },
+    '/api/users/owner/staff': {
+      post: {
+        tags: ['Users'],
+        summary: 'Owner tạo tài khoản staff',
+        description: 'Yêu cầu access token owner. Tạo staff và trả token đăng nhập cho staff đó.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/RegisterStaffRequest'
+              }
+            }
+          }
+        },
+        responses: {
+          '201': { description: 'Tạo tài khoản nhân viên thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không phải owner' },
+          '422': { description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại' }
+        }
+      }
+    },
+    '/api/users/owner/staff/{staff_id}/status': {
+      patch: {
+        tags: ['Users'],
+        summary: 'Owner cập nhật trạng thái staff (active/inactive)',
+        description: 'Chỉ owner mới được cập nhật. Staff phải thuộc cùng cửa hàng của owner.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'staff_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID của nhân viên (MongoDB ObjectId)'
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['status'],
+                properties: {
+                  status: {
+                    type: 'string',
+                    enum: ['active', 'inactive'],
+                    example: 'inactive'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Cập nhật trạng thái nhân viên thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Cập nhật trạng thái nhân viên thành công' },
+                    result: {
+                      type: 'object',
+                      properties: {
+                        user_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2b' },
+                        full_name: { type: 'string', example: 'Nguyen Van Staff' },
+                        phone_number: { type: 'string', example: '0912345678' },
+                        role: { type: 'string', enum: ['staff'] },
+                        store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
+                        status: { type: 'string', enum: ['active', 'inactive'], example: 'inactive' },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không phải owner hoặc tài khoản chưa liên kết cửa hàng' },
+          '404': { description: 'Không tìm thấy nhân viên trong cửa hàng' },
+          '422': { description: 'staff_id không phải MongoId hoặc status không hợp lệ' }
+        }
+      }
+    },
+    '/api/users/owner/staff-list': {
       get: {
         tags: ['Users'],
         summary: 'Owner lấy danh sách staff trong cửa hàng',
@@ -465,36 +581,6 @@ const openApiSpec = {
           },
           '403': {
             description: 'Không phải owner hoặc tài khoản chưa liên kết cửa hàng'
-          }
-        }
-      },
-      post: {
-        tags: ['Users'],
-        summary: 'Owner tạo tài khoản staff',
-        description: 'Yêu cầu access token owner. Tạo staff và trả token đăng nhập cho staff đó.',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/RegisterStaffRequest'
-              }
-            }
-          }
-        },
-        responses: {
-          '201': {
-            description: 'Tạo tài khoản nhân viên thành công'
-          },
-          '401': {
-            description: 'Thiếu hoặc sai access token'
-          },
-          '403': {
-            description: 'Không phải owner'
-          },
-          '422': {
-            description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại'
           }
         }
       }

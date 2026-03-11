@@ -70,3 +70,14 @@ export const refreshTokenController = async (req: Request, res: Response) => {
     result
   })
 }
+
+export const updateStaffStatusController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const staff_id = String(req.params.staff_id || '')
+  const { status } = req.body
+  const result = await usersService.updateStaffStatus(owner_user_id, staff_id, status)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.UPDATE_STAFF_STATUS_SUCCESS,
+    result
+  })
+}
