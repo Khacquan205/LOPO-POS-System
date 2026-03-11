@@ -64,7 +64,10 @@ export const PRODUCTS_MESSAGES = {
   GET_PRODUCT_SUCCESS: 'Lấy thông tin sản phẩm thành công',
   CREATE_PRODUCT_SUCCESS: 'Tạo sản phẩm thành công',
   UPDATE_PRODUCT_SUCCESS: 'Cập nhật sản phẩm thành công',
-  DELETE_PRODUCT_SUCCESS: 'Xóa sản phẩm thành công'
+  DELETE_PRODUCT_SUCCESS: 'Xóa sản phẩm thành công',
+  LOOKUP_PRODUCT_SUCCESS: 'Tra cứu sản phẩm thành công',
+  BARCODE_IS_REQUIRED: 'Mã vạch/QR code là bắt buộc',
+  PRODUCT_NOT_FOUND_BY_BARCODE: 'Không tìm thấy sản phẩm với mã vạch này'
 } as const
 
 export const INVENTORY_MESSAGES = {
@@ -118,5 +121,15 @@ export const STORES_MESSAGES = {
   REQUEST_JOIN_STORE_SUCCESS: 'Gửi yêu cầu tham gia cửa hàng thành công',
   GET_PENDING_JOIN_REQUESTS_SUCCESS: 'Lấy danh sách yêu cầu tham gia đang chờ duyệt thành công',
   APPROVE_JOIN_REQUEST_SUCCESS: 'Duyệt yêu cầu tham gia thành công',
-  REJECT_JOIN_REQUEST_SUCCESS: 'Từ chối yêu cầu tham gia thành công'
+  REJECT_JOIN_REQUEST_SUCCESS: 'Từ chối yêu cầu tham gia thành công',
+  GET_MY_STORES_SUCCESS: 'Lấy danh sách cửa hàng thành công',
+  SELECT_STORE_SUCCESS: 'Chọn cửa hàng làm việc thành công',
+  STORE_ID_IS_REQUIRED: 'store_id là bắt buộc',
+  STORE_ID_MUST_BE_MONGO_ID: 'store_id không hợp lệ',
+  USER_NOT_MEMBER_OF_STORE: 'Bạn không có quyền truy cập cửa hàng này',
+  STORE_NOT_FOUND: 'Không tìm thấy cửa hàng',
+  STORE_NAME_IS_REQUIRED: 'Tên cửa hàng là bắt buộc',
+  STORE_NAME_MUST_BE_STRING: 'Tên cửa hàng phải là chuỗi',
+  CREATE_STORE_SUCCESS: 'Tạo cửa hàng mới thành công',
+  ONLY_OWNER_CAN_CREATE_STORE: 'Chỉ chủ cửa hàng mới có quyền tạo cửa hàng mới'
 } as const

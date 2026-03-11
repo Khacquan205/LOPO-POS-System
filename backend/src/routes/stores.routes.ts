@@ -2,16 +2,22 @@ import { Router } from 'express'
 import { accessTokenValidator } from '~/middlewares/users.middlewares.js'
 import {
   approveJoinRequestController,
+  createStoreController,
   generateStoreQrController,
+  getMyStoresController,
   getPendingJoinRequestsController,
   rejectJoinRequestController,
-  requestJoinStoreByQrController
+  requestJoinStoreByQrController,
+  selectStoreController
 } from '~/controllers/stores.controllers.js'
 import {
+  createStoreValidator,
   generateStoreQrValidator,
   joinByQrValidator,
-  reviewJoinRequestValidator
+  reviewJoinRequestValidator,
+  selectStoreValidator
 } from '~/middlewares/stores.middlewares.js'
+import { ownerOnlyValidator } from '~/middlewares/users.middlewares.js'
 import { wrapRequestHandler } from '~/utils/handlers.js'
 
 const storesRouter = Router()
@@ -41,5 +47,18 @@ storesRouter.post(
   reviewJoinRequestValidator,
   wrapRequestHandler(rejectJoinRequestController)
 )
+
+// Owner: tạo cửa hàng/chi nhánh mới
+storesRouter.post(
+  '/',
+  accessTokenValidator,
+  ownerOnlyValidator,
+  createStoreValidator,
+  wrapRequestHandler(createStoreController)
+)
+// Multi-store: list stores user has access to
+storesRouter.get('/my-stores', accessTokenValidator, wrapRequestHandler(getMyStoresController))
+// Multi-store: switch active store
+storesRouter.post('/select', accessTokenValidator, selectStoreValidator, wrapRequestHandler(selectStoreController))
 
 export default storesRouter

@@ -8,5 +8,6 @@ declare namespace Express {
       exp?: number
       [key: string]: unknown
     }
+    active_store_id?: string
   }
 }

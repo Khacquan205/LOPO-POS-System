@@ -50,3 +50,32 @@ export const rejectJoinRequestController = async (req: Request, res: Response) =
     result
   })
 }
+
+export const getMyStoresController = async (req: Request, res: Response) => {
+  const user_id = String(req.decoded_authorization?.user_id || '')
+  const result = await storesService.getMyStores(user_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: STORES_MESSAGES.GET_MY_STORES_SUCCESS,
+    result
+  })
+}
+
+export const selectStoreController = async (req: Request, res: Response) => {
+  const user_id = String(req.decoded_authorization?.user_id || '')
+  const store_id = String(req.body.store_id || '')
+  const result = await storesService.selectStore(user_id, store_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: STORES_MESSAGES.SELECT_STORE_SUCCESS,
+    result
+  })
+}
+
+export const createStoreController = async (req: Request, res: Response) => {
+  const user_id = String(req.decoded_authorization?.user_id || '')
+  const store_name = String(req.body.name || '')
+  const result = await storesService.createStore(user_id, store_name)
+  return res.status(HTTP_STATUS.CREATED).json({
+    message: STORES_MESSAGES.CREATE_STORE_SUCCESS,
+    result
+  })
+}

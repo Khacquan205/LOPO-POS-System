@@ -890,6 +890,30 @@ const openApiSpec = {
         }
       }
     },
+    '/api/products/lookup': {
+      get: {
+        tags: ['Products'],
+        summary: 'Tra cứu sản phẩm theo barcode/QR code',
+        description: 'Tìm sản phẩm trong cửa hàng theo mã vạch (barcode) hoặc QR code. Dùng cho POS scan nhanh.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'barcode',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Mã vạch hoặc QR code của sản phẩm'
+          }
+        ],
+        responses: {
+          '200': { description: 'Tra cứu sản phẩm thành công' },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Tài khoản chưa liên kết cửa hàng' },
+          '404': { description: 'Không tìm thấy sản phẩm với mã vạch này' },
+          '422': { description: 'Thiếu tham số barcode' }
+        }
+      }
+    },
     '/api/products/{product_id}': {
       get: {
         tags: ['Products'],
@@ -1259,6 +1283,154 @@ const openApiSpec = {
           '403': { description: 'Không đủ quyền owner' },
           '404': { description: 'Không tìm thấy request hoặc cửa hàng' },
           '422': { description: 'request_id không hợp lệ' }
+        }
+      }
+    },
+    '/api/stores': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Owner tạo cửa hàng/chi nhánh mới',
+        description:
+          'Tạo một cửa hàng mới cho owner. Tự động thêm owner vào danh sách thành viên và tạo QR code cho cửa hàng.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: {
+                    type: 'string',
+                    example: 'LOPO Mart Chi nhánh Quận 7',
+                    description: 'Tên cửa hàng/chi nhánh mới'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Tạo cửa hàng thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Tạo cửa hàng mới thành công' },
+                    result: {
+                      type: 'object',
+                      properties: {
+                        store_id: { type: 'string', example: '665b5678abcd1234ef905678' },
+                        name: { type: 'string', example: 'LOPO Mart Chi nhánh Quận 7' },
+                        owner_id: { type: 'string' },
+                        qr_code: { type: 'string' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Chỉ owner mới có quyền tạo cửa hàng' },
+          '422': { description: 'Tên cửa hàng không hợp lệ' }
+        }
+      }
+    },
+    '/api/stores/my-stores': {
+      get: {
+        tags: ['Stores'],
+        summary: 'Lấy danh sách cửa hàng mà user có quyền truy cập',
+        description:
+          'Trả về tất cả cửa hàng user đã tham gia (owner hoặc staff), kèm trường is_active đánh dấu cửa hàng đang làm việc.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Lấy danh sách cửa hàng thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Lấy danh sách cửa hàng thành công' },
+                    result: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          store_id: { type: 'string', example: '665a1234abcd5678ef901234' },
+                          name: { type: 'string', example: 'LOPO Mart Quận 1' },
+                          role: { type: 'string', enum: ['owner', 'staff'], example: 'owner' },
+                          joined_at: { type: 'string', format: 'date-time' },
+                          is_active: { type: 'boolean', example: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' }
+        }
+      }
+    },
+    '/api/stores/select': {
+      post: {
+        tags: ['Stores'],
+        summary: 'Chọn cửa hàng làm việc (switch store)',
+        description:
+          'Chuyển cửa hàng đang làm việc. User phải là thành viên của cửa hàng được chọn. Sau khi gọi, tất cả API (products, orders, inventory...) sẽ hoạt động theo cửa hàng mới.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['store_id'],
+                properties: {
+                  store_id: {
+                    type: 'string',
+                    example: '665b5678abcd1234ef905678',
+                    description: 'store_id của cửa hàng muốn chuyển sang'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Chọn cửa hàng thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Chọn cửa hàng làm việc thành công' },
+                    result: {
+                      type: 'object',
+                      properties: {
+                        store_id: { type: 'string', example: '665b5678abcd1234ef905678' },
+                        name: { type: 'string', example: 'Chi nhánh Quận 7' },
+                        role: { type: 'string', enum: ['owner', 'staff'], example: 'staff' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Bạn không có quyền truy cập cửa hàng này' },
+          '404': { description: 'Không tìm thấy cửa hàng' },
+          '422': { description: 'store_id không hợp lệ' }
         }
       }
     }

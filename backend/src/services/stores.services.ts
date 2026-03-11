@@ -1,6 +1,7 @@
 import { Types } from 'mongoose'
 import Store from '~/models/schemas/Store.schema.js'
 import User from '~/models/schemas/User.schema.js'
+import UserStore from '~/models/schemas/UserStore.schema.js'
 import { ErrorWithStatus } from '~/middlewares/error.middlewares.js'
 import HTTP_STATUS from '~/constants/httpStatus.js'
 import { JoinRequestStatus, UserRole } from '~/constants/enum.js'
@@ -212,6 +213,13 @@ class StoresService {
     staff.store_id = store._id as any
     await staff.save()
 
+    // Auto-populate UserStore junction
+    await UserStore.findOneAndUpdate(
+      { user_id: staff._id, store_id: store._id },
+      { user_id: staff._id, store_id: store._id, role: UserRole.Staff, joined_at: new Date() },
+      { upsert: true, new: true }
+    )
+
     request.status = JoinRequestStatus.Approved
     request.reviewed_at = new Date()
     request.reviewed_by = owner._id
@@ -254,6 +262,133 @@ class StoresService {
     return {
       request_id: String(request.request_id),
       status: request.status
+    }
+  }
+
+  async createStore(owner_user_id: string, store_name: string) {
+    const owner = await this.getUserById(owner_user_id)
+    if (owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: STORES_MESSAGES.ONLY_OWNER_CAN_CREATE_STORE,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+
+    const store = await Store.create({
+      name: store_name,
+      owner_id: owner._id
+    })
+
+    const normalizedStoreId = String((store as any).store_id ?? store._id)
+    store.qr_code = normalizedStoreId
+    await store.save()
+
+    // Tự động thêm owner vào bảng user_stores
+    await UserStore.findOneAndUpdate(
+      { user_id: owner._id, store_id: store._id },
+      { user_id: owner._id, store_id: store._id, role: UserRole.Owner, joined_at: new Date() },
+      { upsert: true, new: true }
+    )
+
+    return {
+      store_id: normalizedStoreId,
+      name: store.name,
+      owner_id: String((owner as any).user_id ?? owner._id),
+      qr_code: store.qr_code,
+      created_at: store.createdAt,
+      updated_at: store.updatedAt
+    }
+  }
+
+  async getMyStores(user_id: string) {
+    const parsedUserId = new Types.ObjectId(user_id)
+
+    // Auto-backfill: nếu user chưa có record trong user_stores, tạo từ dữ liệu hiện có
+    const existingCount = await UserStore.countDocuments({ user_id: parsedUserId })
+    if (existingCount === 0) {
+      const user = await User.findById(user_id).select('store_id role').lean()
+      if (user) {
+        const storesToBackfill: { store_id: Types.ObjectId; role: string }[] = []
+
+        // Owner: tìm tất cả store mà user sở hữu
+        if (user.role === UserRole.Owner) {
+          const ownedStores = await Store.find({ owner_id: parsedUserId }).select('_id').lean()
+          ownedStores.forEach((s) => storesToBackfill.push({ store_id: s._id as Types.ObjectId, role: UserRole.Owner }))
+        }
+
+        // Nếu user.store_id đã gán mà chưa nằm trong danh sách
+        if (user.store_id) {
+          const already = storesToBackfill.some((s) => String(s.store_id) === String(user.store_id))
+          if (!already) {
+            storesToBackfill.push({ store_id: user.store_id as Types.ObjectId, role: user.role as string })
+          }
+        }
+
+        for (const entry of storesToBackfill) {
+          await UserStore.findOneAndUpdate(
+            { user_id: parsedUserId, store_id: entry.store_id },
+            { user_id: parsedUserId, store_id: entry.store_id, role: entry.role, joined_at: new Date() },
+            { upsert: true }
+          )
+        }
+      }
+    }
+
+    const memberships = await UserStore.find({ user_id: parsedUserId }).lean()
+    if (memberships.length === 0) return []
+
+    const storeIds = memberships.map((m) => m.store_id)
+    const stores = await Store.find({ _id: { $in: storeIds } }).lean()
+
+    const user = await User.findById(user_id).select('store_id').lean()
+    const activeStoreId = user?.store_id ? String(user.store_id) : null
+
+    return stores.map((store) => {
+      const membership = memberships.find((m) => String(m.store_id) === String(store._id))
+      const storeId = String((store as any).store_id ?? store._id)
+      return {
+        store_id: storeId,
+        name: store.name,
+        role: membership?.role ?? null,
+        joined_at: membership?.joined_at ?? null,
+        is_active: String(store._id) === activeStoreId
+      }
+    })
+  }
+
+  async selectStore(user_id: string, store_id: string) {
+    const parsedStoreId = this.parseObjectId(store_id)
+
+    // Tìm store bằng custom store_id hoặc _id
+    const store = await Store.findOne({
+      $or: [{ store_id: parsedStoreId }, { _id: parsedStoreId }]
+    })
+
+    if (!store) {
+      throw new ErrorWithStatus({
+        message: STORES_MESSAGES.STORE_NOT_FOUND,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    const membership = await UserStore.findOne({
+      user_id: new Types.ObjectId(user_id),
+      store_id: store._id
+    })
+
+    if (!membership) {
+      throw new ErrorWithStatus({
+        message: STORES_MESSAGES.USER_NOT_MEMBER_OF_STORE,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+
+    await User.findByIdAndUpdate(user_id, { store_id: store._id })
+
+    return {
+      store_id: String((store as any).store_id ?? store._id),
+      name: store.name,
+      role: membership.role
     }
   }
 }

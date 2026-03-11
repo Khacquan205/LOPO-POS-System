@@ -115,6 +115,32 @@ class ProductsService {
     }))
   }
 
+  async lookupByBarcode(user_id: string, barcode: string) {
+    const store_id = await this.getStoreId(user_id)
+    const product = await Product.findOne({
+      store_id: new Types.ObjectId(store_id),
+      barcode,
+      is_active: true
+    })
+    if (!product) {
+      throw new ErrorWithStatus({
+        message: PRODUCTS_MESSAGES.PRODUCT_NOT_FOUND_BY_BARCODE,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+    const stock = await InventoryStock.findOne({
+      store_id: new Types.ObjectId(store_id),
+      product_id: product._id
+    })
+      .select('on_hand')
+      .lean()
+
+    return {
+      ...this.serializeProduct(product),
+      on_hand: stock?.on_hand ?? 0
+    }
+  }
+
   async getProduct(user_id: string, product_id: string) {
     const store_id = await this.getStoreId(user_id)
     const product = await this.findProductByPublicId(store_id, product_id)
