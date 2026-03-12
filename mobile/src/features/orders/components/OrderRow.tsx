@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../../../ui/theme';
-import { Order, formatCurrencyVND, formatDateTime } from '../mock/orders.mock';
+import { formatCurrencyVND, formatDateTime, type OrderRowData } from '../types/order.types';
 import { OrderStatusChip } from './OrderStatusChip';
 
 interface OrderRowProps {
-  order: Order;
+  order: OrderRowData;
   onPress?: () => void;
 }
 
@@ -30,7 +30,7 @@ export const OrderRow: React.FC<OrderRowProps> = ({ order, onPress }) => {
       {/* Right side */}
       <View style={styles.rightSection}>
         <Text style={styles.dateTime}>{formatDateTime(order.createdAt)}</Text>
-        <Text style={styles.total}>{formatCurrencyVND(order.total)}</Text>
+        <Text style={styles.total}>{formatCurrencyVND(order.grandTotal)}</Text>
       </View>
     </TouchableOpacity>
   );

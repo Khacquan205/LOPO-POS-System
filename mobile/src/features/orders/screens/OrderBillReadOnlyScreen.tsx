@@ -1,44 +1,79 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenHeader, Button } from '../../../ui/components';
+import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
 import { OrderStatusChip, OrderProductRow, CustomerBar } from '../components';
-import { getOrderById, formatCurrencyVND, formatDateTime } from '../mock/orders.mock';
+import { getOrderDetail, type ApiOrderItem } from '../../sales/services/orders.service';
+import { formatCurrencyVND, formatDateTime, type OrderItemDisplay, type OrderStatusApi } from '../types/order.types';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'OrderBillReadOnly'>;
 
-export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation, route }) => {
+function mapApiItem(item: ApiOrderItem): OrderItemDisplay {
+  return {
+    id: item.product_id,
+    productId: item.product_id,
+    productName: item.product_name_snapshot,
+    unitPrice: item.unit_price,
+    quantity: item.quantity,
+  };
+}
+
+export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation: _navigation, route }) => {
   const { orderId } = route.params;
   const insets = useSafeAreaInsets();
-  const order = getOrderById(orderId);
+  const token = useAuthStore((s) => s.accessToken);
 
-  if (!order) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [orderCode, setOrderCode] = useState('');
+  const [orderStatus, setOrderStatus] = useState<OrderStatusApi>('completed');
+  const [orderCreatedAt, setOrderCreatedAt] = useState('');
+  const [items, setItems] = useState<OrderItemDisplay[]>([]);
+  const [grandTotal, setGrandTotal] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    setIsLoading(true);
+    getOrderDetail(token, orderId)
+      .then(({ order, items: apiItems }) => {
+        setOrderCode(order.order_code);
+        setOrderStatus(order.status);
+        setOrderCreatedAt(order.createdAt);
+        setItems(apiItems.map(mapApiItem));
+        setGrandTotal(order.grand_total);
+      })
+      .catch((err: unknown) => {
+        Alert.alert('Lỗi', err instanceof Error ? err.message : 'Không thể tải đơn hàng');
+      })
+      .finally(() => setIsLoading(false));
+  }, [token, orderId]);
+
+  if (isLoading) {
     return (
-      <View style={styles.notFound}>
+      <View style={styles.container}>
         <ScreenHeader title="Đơn hàng" showBack />
-        <Text style={styles.notFoundText}>Không tìm thấy đơn hàng</Text>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       </View>
     );
   }
 
-  const totalItems = order.items.reduce((sum, it) => sum + it.quantity, 0);
-  const canViewSummary = order.status === 'NEW';
+  const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={order.code} showBack />
+      <ScreenHeader title={orderCode || 'Đơn hàng'} showBack />
 
       {/* Status + date row */}
       <View style={styles.statusRow}>
-        <OrderStatusChip status={order.status} />
-        <Text style={styles.dateText}>{formatDateTime(order.createdAt)}</Text>
+        <OrderStatusChip status={orderStatus} />
+        <Text style={styles.dateText}>{formatDateTime(orderCreatedAt)}</Text>
       </View>
 
       {/* Product list */}
       <FlatList
-        data={order.items}
+        data={items}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <OrderProductRow item={item} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -53,24 +88,17 @@ export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation, route }) 
           <View style={styles.totalSection}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng cộng</Text>
-              <Text style={styles.totalValue}>{formatCurrencyVND(order.total)}</Text>
+              <Text style={styles.totalValue}>{formatCurrencyVND(grandTotal)}</Text>
             </View>
           </View>
         }
       />
 
-      {/* Customer bar */}
-      <CustomerBar customer={order.customer} isEditable={false} />
+      {/* Customer bar — no customer data in API response yet */}
+      <CustomerBar customer={undefined} isEditable={false} />
 
-      {/* Footer - show for NEW orders */}
-      {canViewSummary && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
-          <Button
-            title="Xem chi tiết thanh toán"
-            onPress={() => navigation.navigate('OrderSummary', { orderId })}
-          />
-        </View>
-      )}
+      {/* No action footer — completed/cancelled orders can't be paid again */}
+      <View style={{ paddingBottom: insets.bottom }} />
     </View>
   );
 };
@@ -79,16 +107,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  notFound: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  notFoundText: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: colors.textSecondary,
-    fontSize: 15,
   },
   statusRow: {
     flexDirection: 'row',
@@ -148,12 +166,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: colors.linkOrange,
-  },
-  footer: {
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.md,
   },
 });

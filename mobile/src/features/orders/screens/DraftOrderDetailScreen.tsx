@@ -1,58 +1,118 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, Button } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
 import { OrderStatusChip, OrderProductRow, CustomerBar } from '../components';
 import { CustomerPickerBottomSheet } from '../../customers/components';
-import { getOrderById, formatCurrencyVND, type OrderItem } from '../mock/orders.mock';
+import { getOrderDetail, updateOrderItems, type ApiOrderItem } from '../../sales/services/orders.service';
+import { formatCurrencyVND, type OrderItemDisplay, type OrderStatusApi } from '../types/order.types';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps, PickedItem } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'DraftOrderDetail'>;
 
+interface DraftItem extends OrderItemDisplay {
+  // productId is already in OrderItemDisplay; kept for clarity
+}
+
+function mapApiItem(item: ApiOrderItem): DraftItem {
+  return {
+    id: item.product_id,
+    productId: item.product_id,
+    productName: item.product_name_snapshot,
+    unitPrice: item.unit_price,
+    quantity: item.quantity,
+  };
+}
+
 export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderId } = route.params;
   const insets = useSafeAreaInsets();
-  const order = getOrderById(orderId);
-  const itemCounter = useRef(0);
+  const token = useAuthStore((s) => s.accessToken);
 
-  const [localItems, setLocalItems] = useState<OrderItem[]>(order?.items ?? []);
-  const [localCustomer, setLocalCustomer] = useState<{ name: string; phone?: string } | undefined>(order?.customer);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [orderCode, setOrderCode] = useState('');
+  const [orderStatus, setOrderStatus] = useState<OrderStatusApi>('draft');
+  const [localItems, setLocalItems] = useState<DraftItem[]>([]);
+  const [localCustomer, setLocalCustomer] = useState<{ name: string; phone?: string } | undefined>();
   const [showPicker, setShowPicker] = useState(false);
+  const isMounted = useRef(true);
 
-  const total = localItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
-  // ── Receive items back from ProductPicker ────────────────────
+  // ── Initial load from API ──────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    setIsLoading(true);
+    getOrderDetail(token, orderId)
+      .then(({ order, items }) => {
+        if (!isMounted.current) return;
+        setOrderCode(order.order_code);
+        setOrderStatus(order.status);
+        setLocalItems(items.map(mapApiItem));
+      })
+      .catch((err: unknown) => {
+        if (!isMounted.current) return;
+        Alert.alert('Lỗi', err instanceof Error ? err.message : 'Không thể tải đơn hàng');
+      })
+      .finally(() => { if (isMounted.current) setIsLoading(false); });
+  }, [token, orderId]);
+
+  // ── Sync items to backend ──────────────────────────────────
+  const syncItems = useCallback(async (items: DraftItem[]) => {
+    if (!token) return;
+    setIsSyncing(true);
+    try {
+      const payload = items.map((it) => ({ product_id: it.productId, quantity: it.quantity }));
+      await updateOrderItems(token, orderId, payload);
+    } catch (err) {
+      Alert.alert('Đồng bộ lỗi', err instanceof Error ? err.message : 'Không thể lưu thay đổi');
+    } finally {
+      if (isMounted.current) setIsSyncing(false);
+    }
+  }, [token, orderId]);
+
+  // ── Receive items back from ProductPicker ──────────────────
   useEffect(() => {
     const picked = route.params?.pickedItems;
     if (!picked) return;
-    setLocalItems((prev) => mergeItems(prev, picked));
+    setLocalItems((prev) => {
+      const next = mergeItems(prev, picked);
+      syncItems(next);
+      return next;
+    });
     navigation.setParams({ pickedItems: undefined });
   }, [route.params?.pickedItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Receive updated qty back from QuantityEditor ─────────────
+  // ── Receive updated qty back from QuantityEditor ───────────
   useEffect(() => {
     const upd = route.params?.updatedItem;
     if (!upd) return;
-    setLocalItems((prev) =>
-      prev
+    setLocalItems((prev) => {
+      const next = prev
         .map((it) => (it.id === upd.itemId ? { ...it, quantity: upd.qty } : it))
-        .filter((it) => it.quantity > 0),
-    );
+        .filter((it) => it.quantity > 0);
+      syncItems(next);
+      return next;
+    });
     navigation.setParams({ updatedItem: undefined });
   }, [route.params?.updatedItem]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mergeItems = (prev: OrderItem[], picked: PickedItem[]): OrderItem[] => {
+  const mergeItems = (prev: DraftItem[], picked: PickedItem[]): DraftItem[] => {
     const next = [...prev];
     picked.forEach((pi) => {
       const existing = next.find((it) => it.productId === pi.productId);
       if (existing) {
         existing.quantity += pi.quantity;
       } else {
-        itemCounter.current += 1;
         next.push({
-          id: `draft_${orderId}_${itemCounter.current}`,
+          id: pi.productId,
           productId: pi.productId,
           productName: pi.productName,
           unitPrice: pi.unitPrice,
@@ -67,15 +127,32 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
     navigation.navigate('ProductPicker', { orderId, returnScreen: 'DraftOrderDetail' });
   }, [navigation, orderId]);
 
-  const handlePayment = useCallback(() => {
-    navigation.navigate('OrderSummary', { orderId, fromDraft: true });
-  }, [navigation, orderId]);
+  const total = localItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
 
-  if (!order) {
+  const handlePayment = useCallback(() => {
+    navigation.navigate('OrderSummary', {
+      orderId,
+      fromDraft: true,
+      liveOrder: {
+        code: orderCode,
+        status: orderStatus,
+        items: localItems.map((it) => ({
+          id: it.id,
+          productName: it.productName,
+          unitPrice: it.unitPrice,
+          quantity: it.quantity,
+        })),
+        customer: localCustomer,
+        total,
+      },
+    });
+  }, [navigation, orderId, orderCode, orderStatus, localItems, localCustomer, total]);
+
+  if (isLoading) {
     return (
-      <View style={styles.notFound}>
+      <View style={styles.centered}>
         <ScreenHeader title="Đơn hàng" showBack />
-        <Text style={styles.notFoundText}>Không tìm thấy đơn hàng</Text>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       </View>
     );
   }
@@ -84,11 +161,14 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={order.code} showBack />
+      <ScreenHeader title={orderCode || 'Đơn hàng'} showBack />
 
       {/* Status + action row */}
       <View style={styles.statusRow}>
-        <OrderStatusChip status={order.status} />
+        <View style={styles.statusLeft}>
+          <OrderStatusChip status={orderStatus} />
+          {isSyncing && <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />}
+        </View>
         <TouchableOpacity style={styles.addBtn} onPress={handleAddProduct} activeOpacity={0.7}>
           <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.addBtnText}>Thêm sản phẩm</Text>
@@ -142,15 +222,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  notFound: {
+  centered: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  notFoundText: {
-    textAlign: 'center',
-    marginTop: 40,
-    color: colors.textSecondary,
-    fontSize: 15,
   },
   statusRow: {
     flexDirection: 'row',
@@ -160,6 +234,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  statusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   addBtn: {
     flexDirection: 'row',

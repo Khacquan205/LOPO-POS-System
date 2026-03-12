@@ -4,6 +4,7 @@ import type {
   CompositeScreenProps,
   NavigatorScreenParams,
 } from "@react-navigation/native";
+import type { OrderStatusApi } from "../features/orders/types/order.types";
 
 // ── Shared param types ───────────────────────────────────────
 export type PickedItem = {
@@ -20,6 +21,7 @@ export type UpdatedItem = {
 
 export type LiveOrderPayload = {
   code: string;
+  status?: OrderStatusApi;
   items: {
     id: string;
     productName: string;
@@ -61,7 +63,7 @@ export type MainStackParamList = {
     fromDraft?: boolean;
     liveOrder?: LiveOrderPayload;
   };
-  Payment: { orderCode: string; total: number };
+  Payment: { orderCode: string; orderId?: string; total: number };
   Sales: { pickedItems?: PickedItem[]; updatedItem?: UpdatedItem } | undefined;
   ProductPicker: {
     orderId: string;

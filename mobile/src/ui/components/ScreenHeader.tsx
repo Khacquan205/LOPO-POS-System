@@ -7,6 +7,7 @@ import { colors, spacing, typography } from '../theme';
 
 interface ScreenHeaderProps {
   title: string;
+  subtitle?: string;
   showBack?: boolean;
   rightIcon?: React.ComponentProps<typeof Ionicons>['name'];
   onRightPress?: () => void;
@@ -14,6 +15,7 @@ interface ScreenHeaderProps {
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
+  subtitle,
   showBack = true,
   rightIcon,
   onRightPress,
@@ -40,6 +42,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {/* Center - Title */}
         <View style={styles.centerSection}>
           <Text style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
 
         {/* Right - Optional icon */}
@@ -90,6 +93,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  subtitle: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '400',
+    letterSpacing: 0.3,
+    marginTop: 1,
   },
   iconButton: {
     padding: spacing.xs,
