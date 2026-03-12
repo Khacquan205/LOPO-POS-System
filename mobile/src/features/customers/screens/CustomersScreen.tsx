@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { View, FlatList, StyleSheet, SafeAreaView } from "react-native";
+import { View, FlatList, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { MainStackScreenProps } from "../../../types/navigation";
 import { colors, spacing } from "../../../ui/theme";
 import { Header } from "../components/Header";
