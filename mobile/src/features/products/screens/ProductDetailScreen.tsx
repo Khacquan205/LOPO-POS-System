@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   Alert,
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MainStackScreenProps } from "../../../types/navigation";

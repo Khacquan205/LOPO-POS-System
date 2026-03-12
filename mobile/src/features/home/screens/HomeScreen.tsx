@@ -9,12 +9,12 @@ import {
 } from "react-native";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
 import { Screen, IconSquare, GridButton, Badge } from "../../../ui/components";
 import { colors, spacing, typography } from "../../../ui/theme";
 import { useAuthStore } from "../../../store/auth.store";
 import { useStoreStore } from "../store/store.store";
 import type { MainStackParamList } from "../../../types/navigation";
-import type { Ionicons } from "@expo/vector-icons";
 
 type FeatureKey =
   | "sales"
@@ -34,17 +34,17 @@ interface GridItem {
 }
 
 const GRID_ITEMS: GridItem[] = [
-  { key: "sales", title: "Bán hàng", icon: "cart-outline" },
-  { key: "orders", title: "Đơn hàng", icon: "receipt-outline" },
-  { key: "products", title: "Sản phẩm", icon: "cube-outline" },
-  { key: "customers", title: "Khách hàng", icon: "people-outline" },
-  { key: "staff", title: "Nhân viên", icon: "person-outline" },
-  { key: "settings", title: "Cài đặt", icon: "settings-outline" },
-  { key: "support", title: "Hỗ trợ", icon: "headset-outline" },
+  { key: "sales", title: "Bán hàng", icon: "cart" },
+  { key: "orders", title: "Đơn hàng", icon: "receipt" },
+  { key: "products", title: "Sản phẩm", icon: "cube" },
+  { key: "customers", title: "Khách hàng", icon: "people" },
+  { key: "staff", title: "Nhân viên", icon: "person" },
+  { key: "settings", title: "Cài đặt", icon: "settings" },
+  { key: "support", title: "Hỗ trợ", icon: "headset" },
   {
     key: "notifications",
     title: "Thông báo",
-    icon: "notifications-outline",
+    icon: "notifications",
     badge: "1",
   },
 ];
@@ -72,11 +72,7 @@ export const HomeScreen: React.FC = () => {
     fetchMyStores();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Nếu là owner, hiển thị tên cửa hàng; ngược lại hiển thị tên người dùng
-  const displayName =
-    user?.role === "owner" && user?.storeName
-      ? user.storeName.toUpperCase()
-      : user?.name?.toUpperCase() || "NGƯỜI DÙNG";
+  const displayName = user?.name?.toUpperCase() || "NGƯỜI DÙNG";
 
   const handleLogout = (): void => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -108,13 +104,14 @@ export const HomeScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <IconSquare icon="storefront-outline" size={48} />
+          <IconSquare icon="storefront" size={48} />
           <View style={styles.headerText}>
             <Text style={styles.greeting}>Xin chào!</Text>
             <Text style={styles.userName}>{displayName}</Text>
           </View>
         </View>
 
+       
         {/* Store selector link */}
         <TouchableOpacity
           onPress={() => navigation.navigate("StoreSelector")}
@@ -151,9 +148,14 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* Logout */}
-        <Text style={styles.logoutLink} onPress={handleLogout}>
-          Đăng xuất
-        </Text>
+        <TouchableOpacity
+          style={styles.logoutRow}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out" size={20} color={colors.linkOrange} />
+          <Text style={styles.logoutLink}>Đăng xuất</Text>
+        </TouchableOpacity>
       </ScrollView>
     </Screen>
   );
@@ -163,7 +165,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
   },
   headerText: {
     marginLeft: spacing.md,
@@ -177,6 +180,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: "700",
   },
+  storeSelectorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+  },
   storeLink: {
     ...typography.body,
     color: colors.linkOrange,
@@ -184,7 +194,7 @@ const styles = StyleSheet.create({
   },
   storeSelectorWrapper: {
     alignItems: "center",
-    marginBottom: spacing.lg,
+    marginLeft: spacing.xs,
   },
   gridContainer: {
     flexDirection: "row",
@@ -204,11 +214,16 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
   },
+  logoutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
   logoutLink: {
     ...typography.body,
     color: colors.linkOrange,
-    textAlign: "center",
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
+    marginLeft: spacing.xs,
   },
 });

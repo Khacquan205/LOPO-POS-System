@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import {
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   View,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { MainStackScreenProps } from "../../../types/navigation";
 import { CreateCustomerHeader } from "../components/CreateCustomerHeader";
 import { CustomerFormFields } from "../components/CustomerFormFields";
