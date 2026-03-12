@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Alert, ScrollView, SafeAreaView, StyleSheet } from "react-native";
+import { Alert, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
