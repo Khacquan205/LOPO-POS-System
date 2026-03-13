@@ -474,31 +474,6 @@ const openApiSpec = {
         }
       }
     },
-    '/api/users/staff': {
-      post: {
-        tags: ['Users'],
-        summary: 'Owner tạo tài khoản staff (deprecated)',
-        description: '⚠️ Deprecated – dùng POST /api/users/owner/staff thay thế. Route này vẫn hoạt động như alias.',
-        deprecated: true,
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/RegisterStaffRequest'
-              }
-            }
-          }
-        },
-        responses: {
-          '201': { description: 'Tạo tài khoản nhân viên thành công' },
-          '401': { description: 'Thiếu hoặc sai access token' },
-          '403': { description: 'Không phải owner' },
-          '422': { description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại' }
-        }
-      }
-    },
     '/api/users/owner/staff': {
       post: {
         tags: ['Users'],
