@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -66,6 +66,11 @@ export const HomeScreen: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const activeStore = useStoreStore((s) => s.stores.find((st) => st.is_active));
+  const fetchMyStores = useStoreStore((s) => s.fetchMyStores);
+
+  useEffect(() => {
+    fetchMyStores();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayName = user?.name?.toUpperCase() || "NGƯỜI DÙNG";
 
@@ -90,7 +95,7 @@ export const HomeScreen: React.FC = () => {
   const handleGridPress = (key: FeatureKey): void => {
     const routeName = ROUTE_MAP[key];
     if (routeName) {
-      navigation.navigate(routeName);
+      navigation.navigate(routeName as never);
     }
   };
 
@@ -106,15 +111,16 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
+       
         {/* Store selector link */}
         <TouchableOpacity
-          style={styles.storeSelectorRow}
           onPress={() => navigation.navigate("StoreSelector")}
           activeOpacity={0.7}
+          style={styles.storeSelectorWrapper}
         >
-          <Ionicons name="home" size={18} color={colors.linkOrange} />
           <Text style={styles.storeLink}>
             {activeStore ? activeStore.name : "Chọn cửa hàng"}
+            {"  ▸"}
           </Text>
         </TouchableOpacity>
 
@@ -184,6 +190,10 @@ const styles = StyleSheet.create({
   storeLink: {
     ...typography.body,
     color: colors.linkOrange,
+    textAlign: "center",
+  },
+  storeSelectorWrapper: {
+    alignItems: "center",
     marginLeft: spacing.xs,
   },
   gridContainer: {

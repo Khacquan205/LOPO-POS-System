@@ -5,14 +5,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, Button } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
 import { SummaryInfoRow, OrderStatusChip, CustomerBar } from '../components';
-import { getOrderById, formatCurrencyVND, formatDateTime, type Order } from '../mock/orders.mock';
-import type { MainStackScreenProps, LiveOrderPayload } from '../../../types/navigation';
+import { formatCurrencyVND, formatDateTime, type OrderStatusApi } from '../types/order.types';
+import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'OrderSummary'>;
 
 type DisplayOrder = {
   code: string;
-  status?: Order['status'];
+  status?: OrderStatusApi;
   createdAt?: string;
   staff?: { name: string };
   customer?: { name: string; phone?: string };
@@ -24,30 +24,25 @@ export const OrderSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderId, liveOrder } = route.params;
   const insets = useSafeAreaInsets();
 
-  // Build normalized view from either live payload (Sales flow) or mock (DraftOrder flow)
+  // Build display from liveOrder param (Sales flow or DraftOrderDetail flow)
   let displayOrder: DisplayOrder | null = null;
   if (liveOrder) {
-    displayOrder = liveOrder;
-  } else if (orderId) {
-    const o = getOrderById(orderId);
-    if (o) {
-      displayOrder = {
-        code: o.code,
-        status: o.status,
-        createdAt: o.createdAt,
-        staff: o.staff,
-        customer: o.customer,
-        items: o.items,
-        total: o.total,
-      };
-    }
+    displayOrder = {
+      code: liveOrder.code,
+      status: liveOrder.status,
+      createdAt: undefined,
+      staff: undefined,
+      customer: liveOrder.customer,
+      items: liveOrder.items,
+      total: liveOrder.total,
+    };
   }
 
   if (!displayOrder) {
     return (
       <View style={styles.notFound}>
         <ScreenHeader title="Tổng kết đơn" showBack />
-        <Text style={styles.notFoundText}>Không tìm thấy đơn hàng</Text>
+        <Text style={styles.notFoundText}>Không tìm thấy thông tin đơn hàng</Text>
       </View>
     );
   }
@@ -115,6 +110,7 @@ export const OrderSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() =>
             navigation.navigate('Payment', {
               orderCode: displayOrder.code,
+              orderId: orderId,
               total: displayOrder.total,
             })
           }

@@ -3,66 +3,110 @@ import {
   View,
   Text,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
 import {
-  CashConfirmModal,
   PaymentSuccessModal,
-  TransferQrCard,
 } from '../components';
+import { usePosStore } from '../store/pos.store';
+import { checkoutOrder } from '../services/orders.service';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'Payment'>;
 
-type PaymentMethod = 'CASH' | 'TRANSFER';
+type PaymentMethod = 'cash' | 'transfer';
+type PaymentStatus = 'paid' | 'unpaid';
 
-const METHODS: { id: PaymentMethod; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
-  { id: 'CASH',     label: 'Tiền mặt',      icon: 'cash-outline' },
-  { id: 'TRANSFER', label: 'Chuyển khoản',  icon: 'phone-portrait-outline' },
+const METHODS: {
+  id: PaymentMethod;
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+}[] = [
+  { id: 'cash', label: 'Tiền mặt', icon: 'cash-outline' },
+  { id: 'transfer', label: 'Chuyển khoản', icon: 'phone-portrait-outline' },
 ];
 
-const formatAmount = (amount: number) =>
-  amount.toLocaleString('vi-VN') + '₫';
-
-const generateTxCode = () =>
-  Math.random().toString(36).slice(2, 12).toUpperCase();
+const formatAmount = (amount: number) => amount.toLocaleString('vi-VN') + '₫';
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { orderCode, total } = route.params;
+  const { orderCode, orderId, total } = route.params;
   const insets = useSafeAreaInsets();
 
-  const [method, setMethod] = useState<PaymentMethod>('CASH');
-  const [showCashConfirm, setShowCashConfirm] = useState(false);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const checkout = usePosStore((s) => s.checkout);
+  const isCheckingOut = usePosStore((s) => s.isCheckingOut);
+  const resetSession = usePosStore((s) => s.resetSession);
+
+  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('paid');
+  const [note, setNote] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  // Key changes on each refresh → forces TransferQrCard to remount + reset countdown
-  const [txCode, setTxCode] = useState<string>(generateTxCode);
+  const [isCheckingOutDirect, setIsCheckingOutDirect] = useState(false);
 
-  const handleCashCTA = useCallback(() => {
-    setShowCashConfirm(true);
-  }, []);
+  const isBusy = isCheckingOut || isCheckingOutDirect;
 
-  const handleCashOk = useCallback(() => {
-    setShowCashConfirm(false);
-    setShowSuccess(true);
-  }, []);
+  const handleConfirm = useCallback(async () => {
+    // No orderId → legacy display-only path
+    if (!orderId) {
+      setShowSuccess(true);
+      return;
+    }
+    if (!accessToken) return;
 
-  const handleTransferConfirm = useCallback(() => {
-    setShowSuccess(true);
-  }, []);
+    const posOrderId = usePosStore.getState().orderId;
 
-  const handleRefreshQr = useCallback(() => {
-    setTxCode(generateTxCode());
-  }, []);
+    if (orderId === posOrderId) {
+      // Current POS session → use posStore (handles its own loading state)
+      const ok = await checkout(accessToken, {
+        payment_method: method,
+        payment_status: paymentStatus,
+        note: note.trim() || undefined,
+      });
+      if (ok) {
+        setShowSuccess(true);
+      } else {
+        const err = usePosStore.getState().error;
+        if (err) {
+          Alert.alert('Thanh toán thất bại', err, [
+            { text: 'OK', onPress: () => usePosStore.getState().clearError() },
+          ]);
+        }
+      }
+    } else {
+      // Order from DraftOrderDetail (different from posStore session)
+      setIsCheckingOutDirect(true);
+      try {
+        await checkoutOrder(accessToken, orderId, {
+          payment_method: method,
+          payment_status: paymentStatus,
+          note: note.trim() || undefined,
+        });
+        setShowSuccess(true);
+      } catch (err) {
+        Alert.alert('Thanh toán thất bại', err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      } finally {
+        setIsCheckingOutDirect(false);
+      }
+    }
+  }, [accessToken, orderId, checkout, method, paymentStatus, note]);
 
   const handleSuccessOk = useCallback(() => {
     setShowSuccess(false);
+    const posOrderId = usePosStore.getState().orderId;
+    if (orderId && orderId === posOrderId) {
+      resetSession();
+    }
     navigation.popToTop();
-  }, [navigation]);
+  }, [navigation, orderId, resetSession]);
 
   return (
     <View style={styles.container}>
@@ -71,6 +115,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
       >
         {/* ── Total card ── */}
         <View style={styles.totalCard}>
@@ -92,7 +137,6 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 onPress={() => setMethod(m.id)}
                 activeOpacity={0.7}
               >
-                {/* Check badge top-right */}
                 {method === m.id && (
                   <View style={styles.checkBadge}>
                     <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
@@ -116,36 +160,69 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* ── Transfer QR card (visible when TRANSFER selected) ── */}
-        {method === 'TRANSFER' && (
-          <TransferQrCard
-            key={txCode}
-            transactionCode={txCode}
-            onConfirm={handleTransferConfirm}
-            onRefresh={handleRefreshQr}
+        {/* ── Payment status ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trạng thái thanh toán</Text>
+          <View style={styles.methodRow}>
+            {(['paid', 'unpaid'] as PaymentStatus[]).map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[
+                  styles.statusCard,
+                  paymentStatus === s && styles.methodCardActive,
+                ]}
+                onPress={() => setPaymentStatus(s)}
+                activeOpacity={0.7}
+              >
+                {paymentStatus === s && (
+                  <View style={styles.checkBadge}>
+                    <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                  </View>
+                )}
+                <Text
+                  style={[
+                    styles.methodLabel,
+                    paymentStatus === s && styles.methodLabelActive,
+                  ]}
+                >
+                  {s === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Note ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ghi chú (tuỳ chọn)</Text>
+          <TextInput
+            style={styles.noteInput}
+            placeholder="Ví dụ: Khách mang về..."
+            placeholderTextColor={colors.textSecondary}
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={3}
           />
-        )}
+        </View>
       </ScrollView>
 
-      {/* ── Bottom CTA (Cash only; Transfer has its own confirm button) ── */}
-      {method === 'CASH' && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
-          <TouchableOpacity
-            style={styles.ctaBtn}
-            onPress={handleCashCTA}
-            activeOpacity={0.8}
-          >
+      {/* ── Confirm CTA ── */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <TouchableOpacity
+          style={[styles.ctaBtn, isBusy && styles.ctaBtnDisabled]}
+          onPress={isBusy ? undefined : handleConfirm}
+          activeOpacity={isBusy ? 1 : 0.8}
+        >
+          {isBusy ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
             <Text style={styles.ctaText}>Hoàn tất thanh toán</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+          )}
+        </TouchableOpacity>
+      </View>
 
-      {/* ── Modals ── */}
-      <CashConfirmModal
-        visible={showCashConfirm}
-        onCancel={() => setShowCashConfirm(false)}
-        onConfirm={handleCashOk}
-      />
+      {/* ── Success Modal ── */}
       <PaymentSuccessModal
         visible={showSuccess}
         orderCode={orderCode}
@@ -235,6 +312,29 @@ const styles = StyleSheet.create({
     top: 6,
     right: 6,
   },
+  statusCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    position: 'relative',
+  },
+  /* Note input */
+  noteInput: {
+    marginHorizontal: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 14,
+    color: colors.textPrimary,
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
   /* Footer */
   footer: {
     backgroundColor: colors.background,
@@ -248,6 +348,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: spacing.md,
     alignItems: 'center',
+  },
+  ctaBtnDisabled: {
+    backgroundColor: colors.textDisabled,
   },
   ctaText: {
     fontSize: 16,

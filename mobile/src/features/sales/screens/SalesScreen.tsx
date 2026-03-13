@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
 import {
@@ -18,72 +18,99 @@ import type { SalesOrderItem } from '../components';
 import { CustomerBar } from '../../orders/components';
 import { CustomerPickerBottomSheet } from '../../customers/components';
 import type { Customer } from '../../customers/mock/customers.mock';
-import { generateNewOrderCode, generateNewOrderId } from '../mock/sales.mock';
+import { usePosStore } from '../store/pos.store';
+import { useProductsStore } from '../../products/store/products.store';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
-import type { PickedItem } from '../../products/mock/products.mock';
 
 type Props = MainStackScreenProps<'Sales'>;
 
 export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
-  const orderCode = useRef(generateNewOrderCode()).current;
-  const orderId = useRef(generateNewOrderId()).current;
-  const itemCounter = useRef(0);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const allProducts = useProductsStore((s) => s.products);
 
-  const [items, setItems] = React.useState<SalesOrderItem[]>([]);
+  // ── POS Store ─────────────────────────────────────────────────
+  const posItems = usePosStore((s) => s.items);
+  const orderId = usePosStore((s) => s.orderId);
+  const orderCode = usePosStore((s) => s.orderCode);
+  const grandTotal = usePosStore((s) => s.grandTotal);
+  const isCreatingOrder = usePosStore((s) => s.isCreatingOrder);
+  const isUpdatingItems = usePosStore((s) => s.isUpdatingItems);
+  const isCancelling = usePosStore((s) => s.isCancelling);
+  const posError = usePosStore((s) => s.error);
+  const clearError = usePosStore((s) => s.clearError);
+  const addPickedItems = usePosStore((s) => s.addPickedItems);
+  const incrementItem = usePosStore((s) => s.incrementItem);
+  const decrementItem = usePosStore((s) => s.decrementItem);
+  const setItemQty = usePosStore((s) => s.setItemQty);
+  const cancelOrder = usePosStore((s) => s.cancel);
+  const resetSession = usePosStore((s) => s.resetSession);
+
   const [customer, setCustomer] = React.useState<Customer | undefined>(undefined);
   const [showPicker, setShowPicker] = React.useState(false);
 
-  const total = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+  // ── Show backend error alerts ─────────────────────────────────
+  useEffect(() => {
+    if (!posError) return;
+    Alert.alert('Lỗi', posError, [{ text: 'OK', onPress: clearError }]);
+  }, [posError]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Receive items back from ProductPicker ───────────────────
+  // ── Receive pickedItems from ProductPicker ────────────────────
   useEffect(() => {
     const picked = route.params?.pickedItems;
-    if (!picked) return;
-    mergePickedItems(picked);
+    if (!picked || picked.length === 0 || !accessToken) return;
+
+    // Enrich with trackInventory / onHand from real product store
+    const enriched = picked.map((pi) => {
+      const p = allProducts.find((ap) => ap.id === pi.productId);
+      return {
+        productId: pi.productId,
+        productName: pi.productName,
+        unitPrice: pi.unitPrice,
+        quantity: pi.quantity,
+        trackInventory: p?.trackInventory ?? false,
+        onHand: p?.onHand ?? 0,
+      };
+    });
+
+    addPickedItems(accessToken, enriched);
     navigation.setParams({ pickedItems: undefined });
   }, [route.params?.pickedItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Receive updated qty back from QuantityEditor ─────────────
+  // ── Receive updatedItem from QuantityEditor ───────────────────
   useEffect(() => {
     const upd = route.params?.updatedItem;
-    if (!upd) return;
-    setItems((prev) =>
-      prev
-        .map((it) =>
-          it.itemId === upd.itemId ? { ...it, quantity: upd.qty } : it,
-        )
-        .filter((it) => it.quantity > 0),
-    );
+    if (!upd || !accessToken) return;
+
+    const product = allProducts.find((p) => {
+      const cartItem = posItems.find((it) => it.itemId === upd.itemId);
+      return cartItem ? p.id === cartItem.productId : false;
+    });
+    const cartItem = posItems.find((it) => it.itemId === upd.itemId);
+    if (cartItem && accessToken) {
+      setItemQty(
+        accessToken,
+        cartItem.productId,
+        upd.qty,
+        product?.onHand ?? 0,
+        product?.trackInventory ?? false,
+      );
+    }
     navigation.setParams({ updatedItem: undefined });
   }, [route.params?.updatedItem]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mergePickedItems = useCallback((picked: PickedItem[]) => {
-    setItems((prev) => {
-      const next = [...prev];
-      picked.forEach((pi) => {
-        const existing = next.find((it) => it.productId === pi.productId);
-        if (existing) {
-          existing.quantity += pi.quantity;
-        } else {
-          itemCounter.current += 1;
-          next.push({
-            itemId: `si_${itemCounter.current}_${pi.productId}`,
-            ...pi,
-          });
-        }
-      });
-      return next;
-    });
-  }, []);
-
   const openProductPicker = useCallback(() => {
-    navigation.navigate('ProductPicker', { orderId, returnScreen: 'Sales' });
+    // Use orderId if exists, otherwise pass a placeholder (draft will be created on first add)
+    navigation.navigate('ProductPicker', {
+      orderId: orderId ?? 'new',
+      returnScreen: 'Sales',
+    });
   }, [navigation, orderId]);
 
   const openQuantityEditor = useCallback(
     (item: SalesOrderItem) => {
       navigation.navigate('QuantityEditor', {
-        orderId,
+        orderId: orderId ?? 'new',
         itemId: item.itemId,
         productName: item.productName,
         unitPrice: item.unitPrice,
@@ -94,44 +121,70 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     [navigation, orderId],
   );
 
-  const handleItemAdd = useCallback((itemId: string) => {
-    setItems((prev) =>
-      prev.map((it) => it.itemId === itemId ? { ...it, quantity: it.quantity + 1 } : it),
-    );
-  }, []);
+  const handleItemAdd = useCallback(
+    (item: SalesOrderItem) => {
+      if (!accessToken) return;
+      const product = allProducts.find((p) => p.id === item.productId);
+      incrementItem(accessToken, item.productId, product?.onHand ?? 0, product?.trackInventory ?? false);
+    },
+    [accessToken, allProducts, incrementItem],
+  );
 
-  const handleItemRemove = useCallback((itemId: string) => {
-    setItems((prev) =>
-      prev
-        .map((it) => it.itemId === itemId ? { ...it, quantity: it.quantity - 1 } : it)
-        .filter((it) => it.quantity > 0),
-    );
-  }, []);
+  const handleItemRemove = useCallback(
+    (item: SalesOrderItem) => {
+      if (!accessToken) return;
+      decrementItem(accessToken, item.productId);
+    },
+    [accessToken, decrementItem],
+  );
 
   const handlePayment = useCallback(() => {
-    navigation.navigate('OrderSummary', {
-      liveOrder: {
-        code: orderCode,
-        items: items.map((it) => ({
-          id: it.itemId,
-          productName: it.productName,
-          unitPrice: it.unitPrice,
-          quantity: it.quantity,
-        })),
-        customer: customer
-          ? { name: customer.name, phone: customer.phone }
-          : undefined,
-        total,
-      },
+    if (!orderId || !orderCode || posItems.length === 0) return;
+    navigation.navigate('Payment', {
+      orderCode,
+      orderId,
+      total: grandTotal,
     });
-  }, [navigation, orderCode, items, customer, total]);
+  }, [navigation, orderId, orderCode, posItems.length, grandTotal]);
+
+  const handleCancelOrder = useCallback(() => {
+    if (!orderId || !accessToken) return;
+    Alert.alert(
+      'Hủy đơn hàng',
+      'Bạn có chắc chắn muốn hủy đơn nháp này không?',
+      [
+        { text: 'Không', style: 'cancel' },
+        {
+          text: 'Hủy đơn',
+          style: 'destructive',
+          onPress: async () => {
+            const ok = await cancelOrder(accessToken);
+            if (ok) {
+              resetSession();
+            }
+          },
+        },
+      ],
+    );
+  }, [orderId, accessToken, cancelOrder, resetSession]);
+
+  // Convert POS items to SalesOrderItem shape for SelectedProductRow
+  const salesItems: SalesOrderItem[] = posItems.map((it) => ({
+    itemId: it.itemId,
+    productId: it.productId,
+    productName: it.productName,
+    unitPrice: it.unitPrice,
+    quantity: it.quantity,
+  }));
+
+  const isBusy = isCreatingOrder || isUpdatingItems || isCancelling;
 
   const renderItem = ({ item }: { item: SalesOrderItem }) => (
     <SelectedProductRow
       item={item}
       onQtyPress={() => openQuantityEditor(item)}
-      onAdd={() => handleItemAdd(item.itemId)}
-      onRemove={() => handleItemRemove(item.itemId)}
+      onAdd={() => handleItemAdd(item)}
+      onRemove={() => handleItemRemove(item)}
     />
   );
 
@@ -139,7 +192,8 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* Header */}
       <ScreenHeader
-        title={orderCode}
+        title={orderId ? 'Tạo đơn hàng' : 'Tạo đơn hàng mới'}
+        subtitle={orderCode ?? undefined}
         showBack
         rightIcon="add-outline"
         onRightPress={openProductPicker}
@@ -153,21 +207,37 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={openProductPicker}
         />
         <View style={styles.actionSpacer} />
-        <SalesActionButton
-          title="Quét sản phẩm"
-          iconName="scan-outline"
-          onPress={openProductPicker}
-        />
+        {orderId ? (
+          <SalesActionButton
+            title="Hủy đơn"
+            iconName="trash-outline"
+            onPress={handleCancelOrder}
+          />
+        ) : (
+          <SalesActionButton
+            title="Quét sản phẩm"
+            iconName="scan-outline"
+            onPress={openProductPicker}
+          />
+        )}
       </View>
 
+      {/* Sync indicator */}
+      {isBusy && (
+        <View style={styles.syncRow}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.syncText}>Đang đồng bộ...</Text>
+        </View>
+      )}
+
       {/* Product list or empty state */}
-      {items.length === 0 ? (
+      {salesItems.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>(Chưa có sản phẩm nào)</Text>
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={salesItems}
           keyExtractor={(it) => it.itemId}
           renderItem={renderItem}
           ItemSeparatorComponent={() => <View style={styles.divider} />}
@@ -181,9 +251,9 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {/* Total footer / CTA */}
       <TotalFooter
-        total={total}
+        total={grandTotal}
         onPress={handlePayment}
-        disabled={items.length === 0}
+        disabled={salesItems.length === 0 || isBusy}
         label="Thanh toán"
       />
 
@@ -211,6 +281,18 @@ const styles = StyleSheet.create({
   },
   actionSpacer: {
     width: spacing.sm,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surfaceSecondary,
+    gap: spacing.xs,
+  },
+  syncText: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   empty: {
     flex: 1,
