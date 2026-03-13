@@ -344,7 +344,7 @@ const openApiSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
-          store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2c' },
+          store_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2c' },
           order_code: { type: 'string', example: 'OD123456789012' },
           cashier_user_id: { type: 'string', example: '67b2f0ef8f3f2f2f2f2f2b' },
           status: { type: 'string', enum: ['draft', 'completed', 'cancelled'], example: 'completed' },
@@ -361,8 +361,8 @@ const openApiSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2d' },
-          order_id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2f2a' },
-          product_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2f2e' },
+          order_id: { type: 'string', example: '67d2f0ef8f3f2f2f2f2f2a' },
+          product_id: { type: 'string', example: '67c2f0ef8f3f2f2f2f2f2e' },
           product_name_snapshot: { type: 'string', example: 'Trà sữa trân châu' },
           barcode_snapshot: { type: 'string', nullable: true, example: '8936001234567' },
           unit_price: { type: 'number', example: 35000 },
@@ -421,31 +421,6 @@ const openApiSpec = {
           '422': {
             description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại'
           }
-        }
-      }
-    },
-    '/api/users/staff': {
-      post: {
-        tags: ['Users'],
-        summary: 'Owner tạo tài khoản staff (deprecated)',
-        description: '⚠️ Deprecated – dùng POST /api/users/owner/staff thay thế. Route này vẫn hoạt động như alias.',
-        deprecated: true,
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/RegisterStaffRequest'
-              }
-            }
-          }
-        },
-        responses: {
-          '201': { description: 'Tạo tài khoản nhân viên thành công' },
-          '401': { description: 'Thiếu hoặc sai access token' },
-          '403': { description: 'Không phải owner' },
-          '422': { description: 'Dữ liệu không hợp lệ hoặc trùng số điện thoại' }
         }
       }
     },
