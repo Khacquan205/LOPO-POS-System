@@ -1,7 +1,13 @@
-import { Schema, model, type InferSchemaType } from 'mongoose'
+import { Schema, Types, model, type InferSchemaType } from 'mongoose'
 
 const orderItemSchema = new Schema(
   {
+    order_item_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      default: () => new Types.ObjectId()
+    },
     order_id: {
       type: Schema.Types.ObjectId,
       required: true,

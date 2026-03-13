@@ -4,6 +4,7 @@ import type {
   CompositeScreenProps,
   NavigatorScreenParams,
 } from "@react-navigation/native";
+import type { OrderStatusApi } from "../features/orders/types/order.types";
 
 // ── Shared param types ───────────────────────────────────────
 export type PickedItem = {
@@ -20,7 +21,13 @@ export type UpdatedItem = {
 
 export type LiveOrderPayload = {
   code: string;
-  items: { id: string; productName: string; unitPrice: number; quantity: number }[];
+  status?: OrderStatusApi;
+  items: {
+    id: string;
+    productName: string;
+    unitPrice: number;
+    quantity: number;
+  }[];
   customer?: { name: string; phone?: string };
   total: number;
 };
@@ -45,25 +52,45 @@ export type MainTabsParamList = {
 export type MainStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabsParamList>;
   Orders: undefined;
-  DraftOrderDetail: { orderId: string; pickedItems?: PickedItem[]; updatedItem?: UpdatedItem };
+  DraftOrderDetail: {
+    orderId: string;
+    pickedItems?: PickedItem[];
+    updatedItem?: UpdatedItem;
+  };
   OrderBillReadOnly: { orderId: string };
-  OrderSummary: { orderId?: string; fromDraft?: boolean; liveOrder?: LiveOrderPayload };
-  Payment: { orderCode: string; total: number };
+  OrderSummary: {
+    orderId?: string;
+    fromDraft?: boolean;
+    liveOrder?: LiveOrderPayload;
+  };
+  Payment: { orderCode: string; orderId?: string; total: number };
   Sales: { pickedItems?: PickedItem[]; updatedItem?: UpdatedItem } | undefined;
-  ProductPicker: { orderId: string; returnScreen: 'Sales' | 'DraftOrderDetail' };
+  ProductPicker: {
+    orderId: string;
+    returnScreen: "Sales" | "DraftOrderDetail";
+  };
   QuantityEditor: {
     orderId: string;
     itemId: string;
     productName: string;
     unitPrice: number;
     currentQty: number;
-    returnScreen: 'Sales' | 'DraftOrderDetail';
+    returnScreen: "Sales" | "DraftOrderDetail";
   };
   Products: { showDeleteSuccessToast?: boolean } | undefined;
   CreateProduct: undefined;
   ProductDetail: { productId: string; edited?: boolean };
   EditProduct: { productId: string };
-  Customers: undefined;
+  Customers:
+    | {
+        showCreateSuccessToast?: boolean;
+        successMessage?: string;
+      }
+    | undefined;
+  CreateCustomer: undefined;
+  EditCustomer: { customerId: string };
+  CustomerDetail: { customerId: string };
+  PurchaseHistory: { customerId: string; customerCode: string };
   Staff: undefined;
   StaffDetail: { staffId: string };
   EditStaff: { staffId: string };
@@ -73,6 +100,7 @@ export type MainStackParamList = {
   Settings: undefined;
   Support: undefined;
   Notifications: undefined;
+  StoreSelector: undefined;
 };
 
 // ── Root Stack ───────────────────────────────────────────────

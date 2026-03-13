@@ -1,89 +1,173 @@
 import { create } from "zustand";
 import {
-  categoriesMock,
-  productsMock,
-  type Product,
-} from "../mock/productManagement.mock";
+  createProduct as createProductApi,
+  deleteProduct as deleteProductApi,
+  getProductById,
+  getProducts,
+  updateProduct as updateProductApi,
+  type ApiProduct,
+  type CreateProductPayload,
+  type UpdateProductPayload,
+} from "../services/products.service";
 
-interface AddProductInput {
+export interface CategoryLookup {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface ProductItemViewModel {
+  id: string;
   name: string;
   price: number;
+  barcode: string | null;
+  categoryId: string | null;
   category: string;
+  categoryColor: string;
+  onHand: number;
+  trackInventory: boolean;
+  status: "active" | "inactive";
+  image?: string;
 }
 
 interface ProductsState {
-  products: Product[];
-  addProduct: (input: AddProductInput) => void;
-  updateProduct: (productId: string, input: AddProductInput) => void;
-  setProductStatus: (productId: string, status: "active" | "inactive") => void;
-  removeProducts: (ids: string[]) => void;
+  products: ProductItemViewModel[];
+  fetchProducts: (
+    token: string,
+    categories?: CategoryLookup[],
+  ) => Promise<void>;
+  fetchProductById: (
+    token: string,
+    productId: string,
+    categories?: CategoryLookup[],
+  ) => Promise<ProductItemViewModel | null>;
+  createProduct: (
+    token: string,
+    payload: CreateProductPayload,
+    categories?: CategoryLookup[],
+  ) => Promise<string>;
+  updateProduct: (
+    token: string,
+    productId: string,
+    payload: UpdateProductPayload,
+    categories?: CategoryLookup[],
+  ) => Promise<void>;
+  setProductStatus: (
+    token: string,
+    productId: string,
+    status: "active" | "inactive",
+    categories?: CategoryLookup[],
+  ) => Promise<void>;
+  deleteProduct: (
+    token: string,
+    productId: string,
+    categories?: CategoryLookup[],
+  ) => Promise<void>;
+  removeProducts: (
+    token: string,
+    ids: string[],
+    categories?: CategoryLookup[],
+  ) => Promise<void>;
 }
 
-const getCategoryColor = (categoryName: string): string => {
-  return (
-    categoriesMock.find((category) => category.name === categoryName)?.color ??
-    categoriesMock[0].color
-  );
-};
+const FALLBACK_COLOR = "#EFA442";
+const UNCLASSIFIED = "Chua phan loai";
 
-export const useProductsStore = create<ProductsState>((set) => ({
-  products: productsMock,
-  addProduct: ({ name, price, category }) => {
-    const trimmedName = name.trim();
-    const normalizedCategory = category.trim() || categoriesMock[0].name;
+function resolveProductId(item: { _id?: string; product_id?: string }): string {
+  return item._id ?? item.product_id ?? "";
+}
 
-    if (!trimmedName) return;
+function resolveCategory(
+  categoryId: string | null,
+  categories: CategoryLookup[],
+): { name: string; color: string } {
+  if (!categoryId) {
+    return { name: UNCLASSIFIED, color: FALLBACK_COLOR };
+  }
+
+  const matched = categories.find((item) => item.id === categoryId);
+  if (!matched) {
+    return { name: UNCLASSIFIED, color: FALLBACK_COLOR };
+  }
+
+  return { name: matched.name, color: matched.color };
+}
+
+function mapApiProductToViewModel(
+  item: ApiProduct,
+  categories: CategoryLookup[],
+): ProductItemViewModel | null {
+  const normalizedId = resolveProductId(item);
+  if (!normalizedId) return null;
+
+  const category = resolveCategory(item.category_id, categories);
+  return {
+    id: normalizedId,
+    name: item.name,
+    price: item.price,
+    barcode: item.barcode ?? null,
+    categoryId: item.category_id,
+    category: category.name,
+    categoryColor: category.color,
+    onHand: typeof item.on_hand === "number" ? item.on_hand : 0,
+    trackInventory: item.track_inventory,
+    status: item.is_active ? "active" : "inactive",
+    image: item.image_url ?? undefined,
+  };
+}
+
+export const useProductsStore = create<ProductsState>((set, get) => ({
+  products: [],
+
+  fetchProducts: async (token, categories = []) => {
+    const items = await getProducts(token);
+    set({
+      products: items
+        .map((item) => mapApiProductToViewModel(item, categories))
+        .filter((item): item is ProductItemViewModel => item !== null),
+    });
+  },
+
+  fetchProductById: async (token, productId, categories = []) => {
+    const item = await getProductById(token, productId);
+    const mapped = mapApiProductToViewModel(item, categories);
+    if (!mapped) return null;
 
     set((state) => ({
-      products: [
-        {
-          id: Date.now().toString(),
-          name: trimmedName,
-          price: price > 0 ? price : 0,
-          category: normalizedCategory,
-          categoryColor: getCategoryColor(normalizedCategory),
-          status: "active",
-        },
-        ...state.products,
-      ],
+      products: state.products.some((p) => p.id === mapped.id)
+        ? state.products.map((p) => (p.id === mapped.id ? mapped : p))
+        : [mapped, ...state.products],
     }));
-  },
-  updateProduct: (productId, { name, price, category }) => {
-    const trimmedName = name.trim();
-    const normalizedCategory = category.trim() || categoriesMock[0].name;
 
-    if (!trimmedName) return;
+    return mapped;
+  },
 
-    set((state) => ({
-      products: state.products.map((product) =>
-        product.id === productId
-          ? {
-              ...product,
-              name: trimmedName,
-              price: price > 0 ? price : 0,
-              category: normalizedCategory,
-              categoryColor: getCategoryColor(normalizedCategory),
-            }
-          : product,
-      ),
-    }));
+  createProduct: async (token, payload, categories = []) => {
+    const created = await createProductApi(token, payload);
+    await get().fetchProducts(token, categories);
+    return resolveProductId(created);
   },
-  setProductStatus: (productId, status) => {
-    set((state) => ({
-      products: state.products.map((product) =>
-        product.id === productId
-          ? {
-              ...product,
-              status,
-            }
-          : product,
-      ),
-    }));
+
+  updateProduct: async (token, productId, payload, categories = []) => {
+    await updateProductApi(token, productId, payload);
+    await get().fetchProducts(token, categories);
   },
-  removeProducts: (ids) => {
+
+  setProductStatus: async (token, productId, status, categories = []) => {
+    await updateProductApi(token, productId, {
+      is_active: status === "active",
+    });
+    await get().fetchProducts(token, categories);
+  },
+
+  deleteProduct: async (token, productId, categories = []) => {
+    await deleteProductApi(token, productId);
+    await get().fetchProducts(token, categories);
+  },
+
+  removeProducts: async (token, ids, categories = []) => {
     if (ids.length === 0) return;
-    set((state) => ({
-      products: state.products.filter((product) => !ids.includes(product.id)),
-    }));
+    await Promise.all(ids.map((id) => deleteProductApi(token, id)));
+    await get().fetchProducts(token, categories);
   },
 }));

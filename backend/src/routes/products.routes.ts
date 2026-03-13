@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getProductsController,
   getProductController,
+  lookupProductController,
   createProductController,
   updateProductController,
   deleteProductController
@@ -14,9 +15,15 @@ const productsRouter = Router()
 
 // Tất cả routes yêu cầu đăng nhập (cả owner và staff đều dùng được)
 productsRouter.get('/', accessTokenValidator, wrapRequestHandler(getProductsController))
-productsRouter.get('/:id', accessTokenValidator, wrapRequestHandler(getProductController))
+productsRouter.get('/lookup', accessTokenValidator, wrapRequestHandler(lookupProductController))
+productsRouter.get('/:product_id', accessTokenValidator, wrapRequestHandler(getProductController))
 productsRouter.post('/', accessTokenValidator, createProductValidator, wrapRequestHandler(createProductController))
-productsRouter.put('/:id', accessTokenValidator, updateProductValidator, wrapRequestHandler(updateProductController))
-productsRouter.delete('/:id', accessTokenValidator, wrapRequestHandler(deleteProductController))
+productsRouter.put(
+  '/:product_id',
+  accessTokenValidator,
+  updateProductValidator,
+  wrapRequestHandler(updateProductController)
+)
+productsRouter.delete('/:product_id', accessTokenValidator, wrapRequestHandler(deleteProductController))
 
 export default productsRouter

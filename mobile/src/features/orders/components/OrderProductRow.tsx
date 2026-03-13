@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../../../ui/theme';
-import { OrderItem, formatCurrencyVND } from '../mock/orders.mock';
+import { formatCurrencyVND, type OrderItemDisplay } from '../types/order.types';
 
 interface OrderProductRowProps {
-  item: OrderItem;
+  item: OrderItemDisplay;
 }
 
 export const OrderProductRow: React.FC<OrderProductRowProps> = ({ item }) => {

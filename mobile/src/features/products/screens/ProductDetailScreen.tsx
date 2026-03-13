@@ -1,6 +1,12 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import {
-  SafeAreaView,
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -12,11 +18,16 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MainStackScreenProps } from "../../../types/navigation";
 import { colors, spacing, typography, radius, shadow } from "../../../ui/theme";
+import { ApiError } from "../../../lib/api/client";
 import { useProductsStore } from "../store/products.store";
+import { useAuthStore } from "../../../store/auth.store";
+import { useCategoriesStore } from "../store/categories.store";
+import { useInventoryStore } from "../store/inventory.store";
 
 const HERO_IMAGE_URI =
   "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
@@ -236,11 +247,19 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           </Text>
 
           <View style={confirmStyles.actionsRow}>
-            <TouchableOpacity activeOpacity={0.8} onPress={onCancel}>
+            <TouchableOpacity
+              style={confirmStyles.actionButton}
+              activeOpacity={0.8}
+              onPress={onCancel}
+            >
               <Text style={confirmStyles.cancelText}>CANCEL</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.8} onPress={onConfirm}>
+            <TouchableOpacity
+              style={[confirmStyles.actionButton, confirmStyles.okButton]}
+              activeOpacity={0.8}
+              onPress={onConfirm}
+            >
               <Text style={confirmStyles.okText}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -361,6 +380,19 @@ const confirmStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  actionButton: {
+    minHeight: 44,
+    minWidth: 110,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+  },
+  okButton: {
+    backgroundColor: "#FDE7CC",
   },
   cancelText: {
     ...typography.body,
@@ -380,16 +412,106 @@ const confirmStyles = StyleSheet.create({
 
 export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const products = useProductsStore((state) => state.products);
+  const fetchProductById = useProductsStore((state) => state.fetchProductById);
   const setProductStatus = useProductsStore((state) => state.setProductStatus);
-  const removeProducts = useProductsStore((state) => state.removeProducts);
+  const deleteProduct = useProductsStore((state) => state.deleteProduct);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const categories = useCategoriesStore((state) => state.categories);
+  const fetchCategories = useCategoriesStore((state) => state.fetchCategories);
+  const stockByProductId = useInventoryStore((state) => state.stockByProductId);
+  const fetchStockByProduct = useInventoryStore(
+    (state) => state.fetchStockByProduct,
+  );
   const [toastVisible, setToastVisible] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [serverProduct, setServerProduct] = useState<
+    (typeof products)[number] | null
+  >(null);
+
+  const navigateToProducts = useCallback(
+    (showDeleteSuccessToast?: boolean) => {
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: "Products",
+          params: { showDeleteSuccessToast },
+          merge: true,
+        }),
+      );
+    },
+    [navigation],
+  );
+
+  const categoryLookup = useMemo(
+    () =>
+      categories.map((item) => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+      })),
+    [categories],
+  );
 
   const product = useMemo(
     () => products.find((item) => item.id === route.params.productId),
     [products, route.params.productId],
   );
+
+  const reloadProductDetail = useCallback(async () => {
+    if (!accessToken) return;
+
+    // Ensure categories are loaded so category name can be resolved in detail.
+    try {
+      await fetchCategories(accessToken);
+    } catch {
+      // If category fetch fails, detail can still render with fallback values.
+    }
+
+    const latestCategoryLookup = useCategoriesStore
+      .getState()
+      .categories.map((item) => ({
+        id: item.id,
+        name: item.name,
+        color: item.color,
+      }));
+
+    try {
+      const latest = await fetchProductById(
+        accessToken,
+        route.params.productId,
+        latestCategoryLookup,
+      );
+      if (latest) {
+        setServerProduct(latest);
+      }
+    } catch (error) {
+      // Network/offline or 404 are expected in some navigation states; avoid log spam.
+      if (
+        !(error instanceof ApiError) ||
+        (error.statusCode !== 0 && error.statusCode !== 404)
+      ) {
+        console.warn("Load product detail failed:", error);
+      }
+    }
+
+    try {
+      await fetchStockByProduct(accessToken, route.params.productId);
+    } catch {
+      // Inventory load failures should not break detail rendering.
+    }
+  }, [
+    accessToken,
+    fetchCategories,
+    fetchProductById,
+    fetchStockByProduct,
+    route.params.productId,
+  ]);
+
+  useEffect(() => {
+    void (async () => {
+      await reloadProductDetail();
+    })();
+  }, [reloadProductDetail]);
 
   // Listen for navigation focus to show toast after editing
   useEffect(() => {
@@ -408,12 +530,15 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return unsubscribe;
   }, [navigation, route.params]);
 
+  const displaySource = serverProduct ?? product;
+
   const displayProduct = {
-    name: product?.name ?? "Bánh mì",
-    price: product?.price ?? 4000,
-    category: product?.category ?? "Bánh kẹo",
-    stock: 0,
-    status: product?.status ?? "active",
+    name: displaySource?.name ?? "Bánh mì",
+    price: displaySource?.price ?? 4000,
+    category: displaySource?.category ?? "Bánh kẹo",
+    stock:
+      displaySource?.onHand ?? stockByProductId[route.params.productId] ?? 0,
+    status: displaySource?.status ?? "active",
   };
 
   const isProductActive = displayProduct.status === "active";
@@ -440,12 +565,12 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.infoCard}>
           <TouchableOpacity
             style={styles.menuButton}
-            activeOpacity={0.75}
+            activeOpacity={1}
             onPress={() => setShowActionMenu(true)}
           >
             <Ionicons
               name="ellipsis-vertical"
-              size={18}
+              size={44}
               color={colors.primary}
             />
           </TouchableOpacity>
@@ -497,27 +622,54 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           isProductActive={isProductActive}
           onClose={() => setShowActionMenu(false)}
           onDeleteProduct={() => setIsDeleteConfirmVisible(true)}
-          onToggleProductStatus={() =>
-            setProductStatus(
-              route.params.productId,
-              isProductActive ? "inactive" : "active",
-            )
-          }
+          onToggleProductStatus={async () => {
+            if (!accessToken) return;
+            try {
+              await setProductStatus(
+                accessToken,
+                route.params.productId,
+                isProductActive ? "inactive" : "active",
+                categoryLookup,
+              );
+              await reloadProductDetail();
+            } catch (error) {
+              console.warn("Update product status failed:", error);
+            }
+          }}
         />
 
         <DeleteConfirmModal
           visible={isDeleteConfirmVisible}
           onCancel={() => setIsDeleteConfirmVisible(false)}
-          onConfirm={() => {
-            removeProducts([route.params.productId]);
+          onConfirm={async () => {
+            if (!accessToken) return;
             setIsDeleteConfirmVisible(false);
-            navigation.dispatch(
-              CommonActions.navigate({
-                name: "Products",
-                params: { showDeleteSuccessToast: true },
-                merge: true,
-              }),
-            );
+            try {
+              await deleteProduct(
+                accessToken,
+                route.params.productId,
+                categoryLookup,
+              );
+              Alert.alert("Xóa thành công", "Sản phẩm đã được xóa.", [
+                {
+                  text: "OK",
+                  onPress: () => navigateToProducts(true),
+                },
+              ]);
+            } catch (error) {
+              Alert.alert(
+                "Xóa thất bại",
+                error instanceof Error
+                  ? error.message
+                  : "Không thể xóa sản phẩm. Vui lòng thử lại.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => navigateToProducts(false),
+                  },
+                ],
+              );
+            }
           }}
         />
       </View>
@@ -571,8 +723,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing.md - spacing.xs,
     right: spacing.md - spacing.xs,
-    width: 44,
-    height: 44,
+    width: 52,
+    height: 52,
     justifyContent: "center",
     alignItems: "center",
   },

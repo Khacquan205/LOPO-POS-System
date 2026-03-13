@@ -1,6 +1,7 @@
 import { Types } from 'mongoose'
 import User from '~/models/schemas/User.schema.js'
 import Store from '~/models/schemas/Store.schema.js'
+import UserStore from '~/models/schemas/UserStore.schema.js'
 import RefreshToken from '~/models/schemas/RefreshToken.schema.js'
 import { hashPassword, comparePassword } from '~/utils/crypto.js'
 import { signToken, verifyToken } from '~/utils/jwt.js'
@@ -31,6 +32,18 @@ interface LoginReqBody {
 }
 
 class UsersService {
+  private serializeUser(user: unknown) {
+    const doc = user as { toObject?: () => Record<string, unknown> }
+    const raw = doc.toObject ? doc.toObject() : (user as Record<string, unknown>)
+    const normalizedUserId = String(raw.user_id ?? raw._id)
+    delete raw._id
+    delete raw.user_id
+    return {
+      user_id: normalizedUserId,
+      ...raw
+    }
+  }
+
   private async createStaffAccount(payload: RegisterStaffReqBody, store_id?: string) {
     const phoneExisted = await this.checkPhoneNumberExists(payload.phone_number)
     if (phoneExisted) {
@@ -57,11 +70,20 @@ class UsersService {
       token: refresh_token
     })
 
+    // Auto-populate UserStore if staff assigned to a store
+    if (store_id) {
+      await UserStore.findOneAndUpdate(
+        { user_id: staff._id, store_id: new Types.ObjectId(store_id) },
+        { user_id: staff._id, store_id: new Types.ObjectId(store_id), role: UserRole.Staff, joined_at: new Date() },
+        { upsert: true, new: true }
+      )
+    }
+
     return {
       access_token,
       refresh_token,
       staff: {
-        _id: staff._id,
+        user_id: String((staff as any).user_id ?? staff._id),
         full_name: staff.full_name,
         phone_number: staff.phone_number,
         role: staff.role,
@@ -122,9 +144,20 @@ class UsersService {
       owner_id: user._id
     })
 
+    store.qr_code = String((store as any).store_id ?? store._id)
+    await store.save()
+
     // Gán store_id cho owner
     user.store_id = store._id as any
     await user.save()
+
+    // Auto-populate UserStore junction
+    await UserStore.create({
+      user_id: user._id,
+      store_id: store._id,
+      role: UserRole.Owner,
+      joined_at: new Date()
+    })
 
     const user_id = user._id.toString()
     const [access_token, refresh_token] = await this.signAccessAndRefreshToken(user_id, user.role)
@@ -138,7 +171,7 @@ class UsersService {
       access_token,
       refresh_token,
       owner: {
-        _id: user._id,
+        user_id: String((user as any).user_id ?? user._id),
         full_name: user.full_name,
         phone_number: user.phone_number,
         role: user.role,
@@ -146,7 +179,7 @@ class UsersService {
         updated_at: user.updatedAt
       },
       store: {
-        _id: store._id,
+        store_id: String((store as any).store_id ?? store._id),
         name: store.name,
         owner_id: store.owner_id,
         created_at: store.createdAt,
@@ -213,20 +246,22 @@ class UsersService {
 
     // Lấy store name nếu user có store_id
     let store_name: string | null = null
+    let normalized_store_id: string | null = null
     if (user.store_id) {
       const store = await Store.findById(user.store_id)
       store_name = store?.name ?? null
+      normalized_store_id = store ? String((store as any).store_id ?? store._id) : String(user.store_id)
     }
 
     return {
       access_token,
       refresh_token,
       user: {
-        _id: user._id,
+        user_id: String((user as any).user_id ?? user._id),
         full_name: user.full_name,
         phone_number: user.phone_number,
         role: user.role,
-        store_id: user.store_id ?? null,
+        store_id: normalized_store_id,
         store_name
       }
     }
@@ -265,7 +300,25 @@ class UsersService {
         status: HTTP_STATUS.NOT_FOUND
       })
     }
-    return user
+    const serializedUser = this.serializeUser(user)
+    const { createdAt, updatedAt, ...profile } = serializedUser as Record<string, unknown>
+
+    let normalizedStoreId: string | null = null
+    let store_name: string | null = null
+    if (user.store_id) {
+      const store = await Store.findById(user.store_id)
+      normalizedStoreId = store ? String((store as any).store_id ?? store._id) : String(user.store_id)
+      store_name = store?.name ?? null
+    }
+
+    return {
+      ...profile,
+      store_id: normalizedStoreId,
+      store_name,
+      store_qr_code: normalizedStoreId,
+      createdAt,
+      updatedAt
+    }
   }
 
   async getStaffsInStore(owner_user_id: string) {
@@ -282,7 +335,7 @@ class UsersService {
         status: HTTP_STATUS.FORBIDDEN
       })
     }
-    
+
     const staffs = await User.find({ store_id: owner.store_id, role: UserRole.Staff })
       .select('-password')
       .sort({ createdAt: -1 })

@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "../../../ui/theme";
-import { formatPrice } from "../mock/productManagement.mock";
+import { formatPrice } from "../../../lib/format";
 
 // ============================================================================
 // TYPES
@@ -12,6 +12,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
+  onHand: number;
   category: string;
   categoryColor: string;
   image?: string;
@@ -79,6 +80,7 @@ export const ProductItem: React.FC<ProductItemProps> = ({
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productPrice}>{formatPrice(product.price)}</Text>
+          <Text style={styles.productStock}>Tồn: {product.onHand}</Text>
         </View>
       </TouchableOpacity>
       <View
@@ -147,6 +149,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     fontWeight: "500",
+  },
+  productStock: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   divider: {
     height: 1,

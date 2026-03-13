@@ -12,10 +12,25 @@ export const getProductsController = async (req: Request, res: Response) => {
   })
 }
 
+export const lookupProductController = async (req: Request, res: Response) => {
+  const user_id = String(req.decoded_authorization?.user_id)
+  const barcode = String(req.query.barcode || '')
+  if (!barcode) {
+    return res.status(HTTP_STATUS.UNPROCESSABLE_ENTITY).json({
+      message: PRODUCTS_MESSAGES.BARCODE_IS_REQUIRED
+    })
+  }
+  const result = await productsService.lookupByBarcode(user_id, barcode)
+  return res.status(HTTP_STATUS.OK).json({
+    message: PRODUCTS_MESSAGES.LOOKUP_PRODUCT_SUCCESS,
+    result
+  })
+}
+
 export const getProductController = async (req: Request, res: Response) => {
   const user_id = String(req.decoded_authorization?.user_id)
-  const id = String(req.params.id)
-  const result = await productsService.getProduct(user_id, id)
+  const product_id = String(req.params.product_id || req.query.product_id)
+  const result = await productsService.getProduct(user_id, product_id)
   return res.status(HTTP_STATUS.OK).json({
     message: PRODUCTS_MESSAGES.GET_PRODUCT_SUCCESS,
     result
@@ -33,8 +48,8 @@ export const createProductController = async (req: Request, res: Response) => {
 
 export const updateProductController = async (req: Request, res: Response) => {
   const user_id = String(req.decoded_authorization?.user_id)
-  const id = String(req.params.id)
-  const result = await productsService.updateProduct(user_id, id, req.body)
+  const product_id = String(req.params.product_id)
+  const result = await productsService.updateProduct(user_id, product_id, req.body)
   return res.status(HTTP_STATUS.OK).json({
     message: PRODUCTS_MESSAGES.UPDATE_PRODUCT_SUCCESS,
     result
@@ -43,8 +58,8 @@ export const updateProductController = async (req: Request, res: Response) => {
 
 export const deleteProductController = async (req: Request, res: Response) => {
   const user_id = String(req.decoded_authorization?.user_id)
-  const id = String(req.params.id)
-  await productsService.deleteProduct(user_id, id)
+  const product_id = String(req.params.product_id)
+  await productsService.deleteProduct(user_id, product_id)
   return res.status(HTTP_STATUS.OK).json({
     message: PRODUCTS_MESSAGES.DELETE_PRODUCT_SUCCESS
   })

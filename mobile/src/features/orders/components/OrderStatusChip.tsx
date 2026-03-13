@@ -1,17 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { STATUS_LABELS, STATUS_COLORS, STATUS_BG_COLORS, OrderStatusType } from '../mock/orders.mock';
+import { STATUS_LABELS, STATUS_COLORS, STATUS_BG_COLORS, type OrderStatusApi } from '../types/order.types';
 
 interface OrderStatusChipProps {
-  status: OrderStatusType;
+  status: OrderStatusApi;
 }
 
 export const OrderStatusChip: React.FC<OrderStatusChipProps> = ({ status }) => {
+  const label = STATUS_LABELS[status] ?? status;
+  const color = STATUS_COLORS[status] ?? '#9CA3AF';
+  const bgColor = STATUS_BG_COLORS[status] ?? '#F3F4F6';
   return (
-    <View style={[styles.chip, { backgroundColor: STATUS_BG_COLORS[status] }]}>
-      <Text style={[styles.label, { color: STATUS_COLORS[status] }]}>
-        {STATUS_LABELS[status]}
-      </Text>
+    <View style={[styles.chip, { backgroundColor: bgColor }]}>
+      <Text style={[styles.label, { color }]}>{label}</Text>
     </View>
   );
 };

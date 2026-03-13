@@ -11,7 +11,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography, radius } from "../../../ui/theme";
-import { categoriesMock, Category } from "../mock/productManagement.mock";
+
+export interface PickerCategory {
+  id: string;
+  name: string;
+  color: string;
+}
 
 // ============================================================================
 // TYPES
@@ -20,8 +25,9 @@ import { categoriesMock, Category } from "../mock/productManagement.mock";
 interface CategoryPickerBottomSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSelectCategory: (category: Category) => void;
+  onSelectCategory: (category: PickerCategory) => void;
   onAddNewCategory?: () => void;
+  categories?: PickerCategory[];
 }
 
 // ============================================================================
@@ -75,7 +81,7 @@ const SearchInput: React.FC<{
 // ============================================================================
 
 const CategoryItem: React.FC<{
-  category: Category;
+  category: PickerCategory;
   onPress: () => void;
   isLast: boolean;
 }> = ({ category, onPress, isLast }) => {
@@ -105,15 +111,21 @@ const CategoryItem: React.FC<{
 
 export const CategoryPickerBottomSheet: React.FC<
   CategoryPickerBottomSheetProps
-> = ({ visible, onClose, onSelectCategory, onAddNewCategory }) => {
+> = ({
+  visible,
+  onClose,
+  onSelectCategory,
+  onAddNewCategory,
+  categories = [],
+}) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter categories based on search query
-  const filteredCategories = categoriesMock.filter((category) =>
+  const filteredCategories = categories.filter((category) =>
     category.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
   );
 
-  const handleSelectCategory = (category: Category) => {
+  const handleSelectCategory = (category: PickerCategory) => {
     onSelectCategory(category);
     setSearchQuery("");
     onClose();

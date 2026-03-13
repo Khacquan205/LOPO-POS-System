@@ -1,88 +1,91 @@
-import React, { useState, useMemo } from 'react';
-import { View, FlatList, StyleSheet, Text } from 'react-native';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl } from 'react-native';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { FilterChip, OrderRow, SearchBar } from '../components';
 import {
-  ordersMock,
-  Order,
-  OrderStatus,
-  OrderStatusType,
   STATUS_FILTER_LABELS,
-  getOrderCountByStatus,
-} from '../mock/orders.mock';
+  type OrderStatusApi,
+  type OrderRowData,
+} from '../types/order.types';
+import { useOrdersStore } from '../store/orders.store';
+import { useAuthStore } from '../../../store/auth.store';
+import type { ApiOrder } from '../../sales/services/orders.service';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
-type FilterType = OrderStatusType | 'ALL';
+type FilterType = OrderStatusApi | 'ALL';
 
-const FILTER_OPTIONS: FilterType[] = ['ALL', 'DRAFT', 'NEW', 'COMPLETED', 'CANCELLED'];
+const FILTER_OPTIONS: FilterType[] = ['ALL', 'draft', 'completed', 'cancelled'];
+
+function mapToRowData(order: ApiOrder): OrderRowData {
+  return {
+    id: order.order_id,
+    code: order.order_code,
+    status: order.status,
+    createdAt: order.createdAt,
+    grandTotal: order.grand_total,
+  };
+}
 
 type Props = MainStackScreenProps<'Orders'>;
 
 export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
+  const { orders, isLoading, error, fetchOrders } = useOrdersStore();
+  const token = useAuthStore((s) => s.accessToken);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
 
-  // Filter orders based on status and search query
+  const load = useCallback(() => {
+    if (token) fetchOrders(token);
+  }, [token, fetchOrders]);
+
+  useEffect(() => { load(); }, [load]);
+
   const filteredOrders = useMemo(() => {
-    let result = ordersMock;
-
-    // Filter by status
+    let result = orders;
     if (selectedFilter !== 'ALL') {
-      result = result.filter((order) => order.status === selectedFilter);
+      result = result.filter((o) => o.status === selectedFilter);
     }
-
-    // Filter by search query (code)
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter((order) =>
-        order.code.toLowerCase().includes(query),
-      );
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter((o) => o.order_code.toLowerCase().includes(q));
     }
-
-    // Sort by createdAt descending (newest first)
-    return result.sort(
+    return [...result].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-  }, [selectedFilter, searchQuery]);
+  }, [orders, selectedFilter, searchQuery]);
 
-  // Get counts for each filter
   const getFilterCount = (filter: FilterType): number => {
-    if (filter === 'ALL') return ordersMock.length;
-    return getOrderCountByStatus(ordersMock, filter);
+    if (filter === 'ALL') return orders.length;
+    return orders.filter((o) => o.status === filter).length;
   };
 
-  const handleOrderPress = (order: Order): void => {
-    if (order.status === 'DRAFT') {
-      navigation.navigate('DraftOrderDetail', { orderId: order.id });
+  const handleOrderPress = (order: ApiOrder): void => {
+    if (order.status === 'draft') {
+      navigation.navigate('DraftOrderDetail', { orderId: order.order_id });
     } else {
-      navigation.navigate('OrderBillReadOnly', { orderId: order.id });
+      navigation.navigate('OrderBillReadOnly', { orderId: order.order_id });
     }
   };
 
-  const handleFilterPress = (): void => {
-    // TODO: Open filter modal
-    console.log('Filter pressed');
+  const renderItem = ({ item }: { item: ApiOrder }) => (
+    <OrderRow order={mapToRowData(item)} onPress={() => handleOrderPress(item)} />
+  );
+
+  const renderEmpty = () => {
+    if (isLoading) return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>
+          {error ? error : 'Không có đơn hàng nào'}
+        </Text>
+      </View>
+    );
   };
-
-  const renderItem = ({ item }: { item: Order }) => (
-    <OrderRow order={item} onPress={() => handleOrderPress(item)} />
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Không có đơn hàng nào</Text>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Đơn hàng"
-        showBack
-        rightIcon="funnel-outline"
-        onRightPress={handleFilterPress}
-      />
+      <ScreenHeader title="Đơn hàng" showBack />
 
       {/* Search Bar */}
       <SearchBar
@@ -106,14 +109,22 @@ export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
 
+      {/* Loading indicator */}
+      {isLoading && orders.length === 0 && (
+        <ActivityIndicator style={styles.loader} color={colors.primary} />
+      )}
+
       {/* Orders List */}
       <FlatList
         data={filteredOrders}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.order_id}
         renderItem={renderItem}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={filteredOrders.length === 0 && styles.emptyList}
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={load} colors={[colors.primary]} />
+        }
       />
     </View>
   );
@@ -131,6 +142,9 @@ const styles = StyleSheet.create({
   filtersRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  loader: {
+    marginTop: spacing.xl,
   },
   emptyContainer: {
     flex: 1,

@@ -1,142 +1,137 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TextInput, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenHeader } from '../../../ui/components';
-import { colors, spacing, typography } from '../../../ui/theme';
-import { customersMock, Customer } from '../mock/customers.mock';
+import React, { useMemo, useState, useEffect } from "react";
+import { View, FlatList, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { MainStackScreenProps } from "../../../types/navigation";
+import { colors, spacing } from "../../../ui/theme";
+import { Header } from "../components/Header";
+import { SearchBar } from "../components/SearchBar";
+import { CustomerItem } from "../components/CustomerItem";
+import { FloatingActionButton } from "../../products/components/FloatingActionButton";
+import { SuccessToast } from "../../../ui/components";
+import { CustomerFilterBottomSheet } from "../components/CustomerFilterBottomSheet";
+import type { Customer, CustomerStatus } from "../mock/customers.mock";
+import { useCustomersStore } from "../store/customers.store";
 
-export const CustomersScreen: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+type FilterStatusType = "Tất cả" | CustomerStatus;
+
+type Props = MainStackScreenProps<"Customers">;
+
+export const CustomersScreen: React.FC<Props> = ({ route, navigation }) => {
+  const customers = useCustomersStore((state) => state.customers);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Thêm mới thành công!");
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [selectedStatusFilter, setSelectedStatusFilter] =
+    useState<FilterStatusType>("Tất cả");
+
+  useEffect(() => {
+    if (route.params?.showCreateSuccessToast || route.params?.successMessage) {
+      setToastMessage(route.params?.successMessage ?? "Thêm mới thành công!");
+      setToastVisible(true);
+      navigation.setParams({
+        showCreateSuccessToast: undefined,
+        successMessage: undefined,
+      });
+    }
+  }, [
+    route.params?.showCreateSuccessToast,
+    route.params?.successMessage,
+    navigation,
+  ]);
 
   const filteredCustomers = useMemo(() => {
-    if (!searchQuery.trim()) return customersMock;
-    const query = searchQuery.toLowerCase().trim();
-    return customersMock.filter(
-      (c) =>
-        c.name.toLowerCase().includes(query) ||
-        c.phone.includes(query),
-    );
-  }, [searchQuery]);
+    let result = customers;
 
-  const formatCurrency = (amount: number): string => {
-    return amount.toLocaleString('vi-VN') + '₫';
-  };
+    // Apply status filter
+    if (selectedStatusFilter !== "Tất cả") {
+      result = result.filter(
+        (customer) => customer.status === selectedStatusFilter,
+      );
+    }
+
+    // Apply search filter
+    if (!searchQuery.trim()) return result;
+    const query = searchQuery.toLowerCase().trim();
+    return result.filter(
+      (customer) =>
+        customer.name.toLowerCase().includes(query) ||
+        customer.phone.includes(query),
+    );
+  }, [searchQuery, customers, selectedStatusFilter]);
 
   const renderItem = ({ item }: { item: Customer }) => (
-    <View style={styles.customerItem}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.name.split(' ').slice(-1)[0][0]}
-        </Text>
-      </View>
-      <View style={styles.customerInfo}>
-        <Text style={styles.customerName}>{item.name}</Text>
-        <Text style={styles.customerPhone}>{item.phone}</Text>
-      </View>
-      <View style={styles.customerStats}>
-        <Text style={styles.orderCount}>{item.totalOrders} đơn</Text>
-        <Text style={styles.totalSpent}>{formatCurrency(item.totalSpent)}</Text>
-      </View>
-    </View>
+    <CustomerItem
+      customer={item}
+      onPress={() =>
+        navigation.navigate("CustomerDetail", { customerId: item.id })
+      }
+    />
   );
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title="Khách hàng" showBack />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Header
+            onBackPress={() => navigation.goBack()}
+            onFilterPress={() => setIsFilterVisible(true)}
+          />
+        </View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Tìm khách hàng..."
-          placeholderTextColor={colors.textSecondary}
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+
+        <FlatList
+          data={filteredCustomers}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          contentContainerStyle={styles.listContent}
         />
       </View>
 
-      {/* Customer List */}
-      <FlatList
-        data={filteredCustomers}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      <FloatingActionButton
+        onPress={() => navigation.navigate("CreateCustomer")}
       />
-    </View>
+
+      {/* Success Toast */}
+      <SuccessToast
+        visible={toastVisible}
+        message={toastMessage}
+        onHide={() => setToastVisible(false)}
+      />
+
+      {/* Filter Bottom Sheet */}
+      <CustomerFilterBottomSheet
+        visible={isFilterVisible}
+        selectedFilter={selectedStatusFilter}
+        onSelectFilter={setSelectedStatusFilter}
+        onClose={() => setIsFilterVisible(false)}
+      />
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F6F6F6",
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#F6F6F6",
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
-    margin: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    height: 44,
+  header: {
+    marginBottom: spacing.xs,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: spacing.sm,
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  customerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.background,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  avatarText: {
-    ...typography.h3,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  customerInfo: {
-    flex: 1,
-  },
-  customerName: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  customerPhone: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  customerStats: {
-    alignItems: 'flex-end',
-  },
-  orderCount: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  totalSpent: {
-    ...typography.body,
-    color: colors.linkOrange,
-    fontWeight: '600',
+  listContent: {
+    paddingBottom: 92,
   },
   separator: {
     height: 1,
-    backgroundColor: colors.border,
-    marginLeft: spacing.md + 48 + spacing.md,
+    marginLeft: spacing.md,
+    marginRight: spacing.md,
+    backgroundColor: colors.borderLight,
   },
 });

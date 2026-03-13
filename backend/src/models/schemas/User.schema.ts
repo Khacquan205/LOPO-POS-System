@@ -1,8 +1,14 @@
-import { Schema, model, type InferSchemaType } from 'mongoose'
+import { Schema, Types, model, type InferSchemaType } from 'mongoose'
 import { UserRole, UserStatus } from '~/constants/enum.js'
 
 const userSchema = new Schema(
   {
+    user_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      default: () => new Types.ObjectId()
+    },
     full_name: {
       type: String,
       required: true,

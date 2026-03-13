@@ -31,23 +31,25 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastVariant, setToastVariant] = useState<'success' | 'error' | 'warning'>('success');
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<
+    "success" | "error" | "warning"
+  >("success");
 
   const showSuccessToast = useCallback((message: string) => {
-    setToastVariant('success');
+    setToastVariant("success");
     setToastMessage(message);
     setToastVisible(true);
   }, []);
 
   const showErrorToast = useCallback((message: string) => {
-    setToastVariant('error');
+    setToastVariant("error");
     setToastMessage(message);
     setToastVisible(true);
   }, []);
 
   const showWarningToast = useCallback((message: string) => {
-    setToastVariant('warning');
+    setToastVariant("warning");
     setToastMessage(message);
     setToastVisible(true);
   }, []);
@@ -58,7 +60,14 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 
   return (
     <ToastContext.Provider
-      value={{ showSuccessToast, showErrorToast, showWarningToast, hideToast, toastVisible, toastMessage }}
+      value={{
+        showSuccessToast,
+        showErrorToast,
+        showWarningToast,
+        hideToast,
+        toastVisible,
+        toastMessage,
+      }}
     >
       {children}
       <View style={styles.toastWrapper} pointerEvents="none">
@@ -76,7 +85,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
 
 const styles = StyleSheet.create({
   toastWrapper: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,

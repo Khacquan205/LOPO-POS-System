@@ -1,8 +1,14 @@
-import { Schema, model, type InferSchemaType } from 'mongoose'
+import { Schema, Types, model, type InferSchemaType } from 'mongoose'
 import { OrderStatus, PaymentMethod, PaymentStatus } from '~/constants/enum.js'
 
 const orderSchema = new Schema(
   {
+    order_id: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+      default: () => new Types.ObjectId()
+    },
     store_id: {
       type: Schema.Types.ObjectId,
       required: true,
