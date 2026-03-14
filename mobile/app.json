@@ -29,7 +29,13 @@
       "tsconfigPaths": true
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Cho phep LOPO POS truy cap camera de quet ma vach."
+        }
+      ]
     ]
   }
 }

@@ -112,6 +112,11 @@ export const OrderSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
               orderCode: displayOrder.code,
               orderId: orderId,
               total: displayOrder.total,
+              status: displayOrder.status,
+              createdAt: displayOrder.createdAt,
+              staffName: displayOrder.staff?.name,
+              items: displayOrder.items,
+              customer: displayOrder.customer,
             })
           }
         />

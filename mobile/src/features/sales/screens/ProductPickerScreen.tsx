@@ -3,7 +3,6 @@ import {
   View,
   Text,
   FlatList,
-  ScrollView,
   TextInput,
   StyleSheet,
   TouchableOpacity,
@@ -13,10 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
-import { ProductCategoryChip, ProductListItem } from '../components';
+import { ProductListItem } from '../components';
+import { CategoryChips } from '../../products/components/CategoryChips';
 import { useProductsStore } from '../../products/store/products.store';
 import { useCategoriesStore } from '../../products/store/categories.store';
 import { useAuthStore } from '../../../store/auth.store';
+import { usePosStore } from '../store/pos.store';
 import type { ProductItemViewModel } from '../../products/store/products.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 import type { PickedItem } from '../../../types/navigation';
@@ -26,6 +27,7 @@ type Props = MainStackScreenProps<'ProductPicker'>;
 export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderId, returnScreen } = route.params;
   const insets = useSafeAreaInsets();
+  const orderCode = usePosStore((s) => s.orderCode);
 
   // ── Real product & category data ─────────────────────────────
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -61,8 +63,8 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Category list: "Tất cả" + real categories
   const categoryChips = useMemo(() => [
-    { id: 'all', name: 'Tất cả' },
-    ...storeCategories.map((c) => ({ id: c.id, name: c.name })),
+    { id: 'all', name: 'Tất cả', color: colors.linkOrange },
+    ...storeCategories.map((c) => ({ id: c.id, name: c.name, color: c.color })),
   ], [storeCategories]);
 
   const filteredProducts = useMemo(() => {
@@ -131,7 +133,11 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={`Đơn ${orderId}`} showBack />
+      <ScreenHeader
+        title="Đơn mới"
+        subtitle={orderCode ?? (orderId !== 'new' ? orderId : undefined)}
+        showBack
+      />
 
       {/* Search bar */}
       <View style={styles.searchRow}>
@@ -148,22 +154,13 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Category chips - horizontal scroll */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryScroll}
-        style={styles.categoryBar}
-      >
-        {categoryChips.map((cat) => (
-          <ProductCategoryChip
-            key={cat.id}
-            label={cat.name}
-            isSelected={selectedCategory === cat.id}
-            onPress={() => setSelectedCategory(cat.id)}
-          />
-        ))}
-      </ScrollView>
+      {/* Category chips */}
+      <CategoryChips
+        categories={categoryChips}
+        selectedId={selectedCategory}
+        onSelectCategory={(id) => setSelectedCategory(id ?? 'all')}
+        compact
+      />
 
       {/* Product list */}
       {isLoading ? (
@@ -231,16 +228,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingVertical: 0,
     marginRight: spacing.xs,
-  },
-  categoryBar: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    maxHeight: 50,
-  },
-  categoryScroll: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
   },
   list: {
     flex: 1,

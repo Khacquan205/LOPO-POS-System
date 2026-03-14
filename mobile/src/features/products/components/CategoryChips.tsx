@@ -44,10 +44,14 @@ const CategoryChip: React.FC<CategoryChipProps> = ({
       style={[
         styles.categoryChip,
         compact ? styles.categoryChipCompact : styles.categoryChipDefault,
+        !isSelected && styles.categoryChipMuted,
+        isSelected && styles.categoryChipSelected,
         { backgroundColor: color },
       ]}
     >
-      <Text style={styles.categoryChipText}>{label}</Text>
+      <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextSelected]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -106,6 +110,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.full,
     alignSelf: "flex-start",
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  categoryChipMuted: {
+    opacity: 0.65,
+  },
+  categoryChipSelected: {
+    borderColor: colors.white,
   },
   categoryChipDefault: {
     height: 44,
@@ -119,5 +131,8 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.white,
     fontWeight: "600",
+  },
+  categoryChipTextSelected: {
+    fontWeight: "700",
   },
 });

@@ -107,6 +107,13 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   }, [navigation, orderId]);
 
+  const openBarcodeScanner = useCallback(() => {
+    navigation.navigate('ScanProduct', {
+      orderId: orderId ?? undefined,
+      returnScreen: 'Sales',
+    });
+  }, [navigation, orderId]);
+
   const openQuantityEditor = useCallback(
     (item: SalesOrderItem) => {
       navigation.navigate('QuantityEditor', {
@@ -192,11 +199,13 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* Header */}
       <ScreenHeader
-        title={orderId ? 'Tạo đơn hàng' : 'Tạo đơn hàng mới'}
+        title="Đơn mới"
         subtitle={orderCode ?? undefined}
         showBack
         rightIcon="add-outline"
         onRightPress={openProductPicker}
+        rightSecondaryIcon="trash-outline"
+        onRightSecondaryPress={handleCancelOrder}
       />
 
       {/* Action buttons */}
@@ -207,19 +216,11 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={openProductPicker}
         />
         <View style={styles.actionSpacer} />
-        {orderId ? (
-          <SalesActionButton
-            title="Hủy đơn"
-            iconName="trash-outline"
-            onPress={handleCancelOrder}
-          />
-        ) : (
-          <SalesActionButton
-            title="Quét sản phẩm"
-            iconName="scan-outline"
-            onPress={openProductPicker}
-          />
-        )}
+        <SalesActionButton
+          title="Quét sản phẩm"
+          iconName="scan-outline"
+          onPress={openBarcodeScanner}
+        />
       </View>
 
       {/* Sync indicator */}
