@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../../ui/theme';
 import type { ProductItemViewModel } from '../../products/store/products.store';
-import { formatPrice } from '../../products/mock/products.mock';
+import { formatPrice } from '../../../lib/format';
 
 interface ProductListItemProps {
   product: ProductItemViewModel;
@@ -18,39 +18,47 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
   onAdd,
   onRemove,
 }) => {
-  // Show stock warning if tracking is enabled and stock is low
-  const showLowStock = product.trackInventory && product.onHand <= 5;
   const outOfStock = product.trackInventory && product.onHand <= 0;
 
   return (
-    <View style={styles.container}>
-      {/* Thumbnail — uses category color as background */}
-      <View style={[styles.thumbnail, { backgroundColor: product.categoryColor ?? colors.surfaceSecondary }]}>
-        <Ionicons name="pricetag-outline" size={20} color={colors.textPrimary} />
+    <Pressable
+      style={styles.container}
+      onPress={outOfStock ? undefined : onAdd}
+      disabled={outOfStock}
+    >
+      <View style={[styles.colorBar, { backgroundColor: product.categoryColor ?? colors.border }]} />
+
+      <View style={styles.imageContainer}>
+        <Ionicons name="cube-outline" size={26} color={colors.textSecondary} />
       </View>
 
-      {/* Info */}
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         <Text style={styles.price}>{formatPrice(product.price)}</Text>
-        {showLowStock && !outOfStock && (
-          <Text style={styles.lowStock}>Còn {product.onHand} trong kho</Text>
-        )}
-        {outOfStock && (
-          <Text style={styles.outOfStock}>Hết hàng</Text>
-        )}
+        <Text style={styles.stock}>Tồn: {product.onHand}</Text>
+        {outOfStock && <Text style={styles.outOfStock}>Hết hàng</Text>}
       </View>
 
       {/* Stepper / Add button — disabled when out of stock */}
       {selectedQty > 0 ? (
         <View style={styles.stepper}>
-          <TouchableOpacity style={styles.stepBtn} onPress={onRemove} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.stepBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            activeOpacity={0.7}
+          >
             <Ionicons name="remove" size={18} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.stepQty}>{selectedQty}</Text>
           <TouchableOpacity
             style={[styles.stepBtn, outOfStock && styles.stepBtnDisabled]}
-            onPress={outOfStock ? undefined : onAdd}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (!outOfStock) onAdd();
+            }}
             activeOpacity={outOfStock ? 1 : 0.7}
           >
             <Ionicons name="add" size={18} color={outOfStock ? colors.textDisabled : colors.primary} />
@@ -59,13 +67,16 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
       ) : (
         <TouchableOpacity
           style={[styles.addIcon, outOfStock && styles.stepBtnDisabled]}
-          onPress={outOfStock ? undefined : onAdd}
+          onPress={(e) => {
+            e.stopPropagation();
+            if (!outOfStock) onAdd();
+          }}
           activeOpacity={outOfStock ? 1 : 0.7}
         >
           <Ionicons name="add" size={20} color={outOfStock ? colors.textDisabled : colors.textSecondary} />
         </TouchableOpacity>
       )}
-    </View>
+    </Pressable>
   );
 };
 
@@ -73,17 +84,23 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.background,
+    backgroundColor: '#F6F6F6',
+    gap: spacing.sm,
   },
-  thumbnail: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+  colorBar: {
+    width: 3,
+    height: 60,
+    borderRadius: 2,
+  },
+  imageContainer: {
+    width: 56,
+    height: 56,
+    backgroundColor: colors.white,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
   },
   info: {
     flex: 1,
@@ -99,13 +116,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  lowStock: {
-    fontSize: 11,
-    color: colors.warning,
+  stock: {
+    fontSize: 12,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   outOfStock: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.error,
     marginTop: 2,
   },

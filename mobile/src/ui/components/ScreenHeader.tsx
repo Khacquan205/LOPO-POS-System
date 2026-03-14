@@ -11,6 +11,8 @@ interface ScreenHeaderProps {
   showBack?: boolean;
   rightIcon?: React.ComponentProps<typeof Ionicons>['name'];
   onRightPress?: () => void;
+  rightSecondaryIcon?: React.ComponentProps<typeof Ionicons>['name'];
+  onRightSecondaryPress?: () => void;
 }
 
 export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
@@ -19,9 +21,12 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   showBack = true,
   rightIcon,
   onRightPress,
+  rightSecondaryIcon,
+  onRightSecondaryPress,
 }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const canGoBack = navigation.canGoBack();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
@@ -30,7 +35,7 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         <View style={styles.leftSection}>
           {showBack && (
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => (canGoBack ? navigation.goBack() : undefined)}
               style={styles.iconButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -45,8 +50,17 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
 
-        {/* Right - Optional icon */}
+        {/* Right - Optional icons */}
         <View style={styles.rightSection}>
+          {rightSecondaryIcon && (
+            <TouchableOpacity
+              onPress={onRightSecondaryPress}
+              style={styles.iconButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name={rightSecondaryIcon} size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           {rightIcon && (
             <TouchableOpacity
               onPress={onRightPress}
@@ -84,8 +98,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rightSection: {
-    width: 40,
-    alignItems: 'flex-end',
+    minWidth: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
   },
   title: {
     ...typography.h3,

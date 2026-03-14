@@ -8,6 +8,7 @@ import { OrderBillReadOnlyScreen } from "../../features/orders/screens/OrderBill
 import { OrderSummaryScreen } from "../../features/orders/screens/OrderSummaryScreen";
 import { SalesScreen } from "../../features/sales/screens/SalesScreen";
 import { ProductPickerScreen } from "../../features/sales/screens/ProductPickerScreen";
+import { ScanProductScreen } from "../../features/sales/screens/ScanProductScreen";
 import { QuantityEditorScreen } from "../../features/sales/screens/QuantityEditorScreen";
 import { PaymentScreen } from "../../features/sales/screens/PaymentScreen";
 import { CustomersScreen } from "../../features/customers/screens/CustomersScreen";
@@ -53,6 +54,7 @@ export const MainStack: React.FC = () => {
       <Stack.Screen name="OrderSummary" component={OrderSummaryScreen} />
       <Stack.Screen name="Sales" component={SalesScreen} />
       <Stack.Screen name="ProductPicker" component={ProductPickerScreen} />
+      <Stack.Screen name="ScanProduct" component={ScanProductScreen} />
       <Stack.Screen name="QuantityEditor" component={QuantityEditorScreen} />
       <Stack.Screen name="Payment" component={PaymentScreen} />
       <Stack.Screen name="Products" component={ProductManagementScreen} />

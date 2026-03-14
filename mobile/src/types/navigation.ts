@@ -22,6 +22,8 @@ export type UpdatedItem = {
 export type LiveOrderPayload = {
   code: string;
   status?: OrderStatusApi;
+  createdAt?: string;
+  staffName?: string;
   items: {
     id: string;
     productName: string;
@@ -63,11 +65,29 @@ export type MainStackParamList = {
     fromDraft?: boolean;
     liveOrder?: LiveOrderPayload;
   };
-  Payment: { orderCode: string; orderId?: string; total: number };
+  Payment: {
+    orderCode: string;
+    orderId?: string;
+    total: number;
+    status?: OrderStatusApi;
+    createdAt?: string;
+    staffName?: string;
+    items?: {
+      id: string;
+      productName: string;
+      unitPrice: number;
+      quantity: number;
+    }[];
+    customer?: { name: string; phone?: string };
+  };
   Sales: { pickedItems?: PickedItem[]; updatedItem?: UpdatedItem } | undefined;
   ProductPicker: {
     orderId: string;
     returnScreen: "Sales" | "DraftOrderDetail";
+  };
+  ScanProduct: {
+    returnScreen: "Sales" | "DraftOrderDetail";
+    orderId?: string;
   };
   QuantityEditor: {
     orderId: string;
