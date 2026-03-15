@@ -360,8 +360,7 @@ const openApiSpec = {
         type: 'object',
         properties: {
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
-          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
-          note: { type: 'string', nullable: true, example: 'Khách mang về' }
+          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' }
         }
       },
       OrderResult: {
@@ -375,7 +374,6 @@ const openApiSpec = {
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
           payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
           grand_total: { type: 'number', example: 70000 },
-          note: { type: 'string', nullable: true, example: 'Khách mang về' },
           completed_at: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' }

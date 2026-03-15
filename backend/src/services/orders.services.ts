@@ -18,7 +18,6 @@ interface UpdateOrderItemBody {
 interface CheckoutOrderBody {
   payment_method?: PaymentMethod
   payment_status?: PaymentStatus
-  note?: string
 }
 
 class OrdersService {
@@ -246,9 +245,6 @@ class OrdersService {
     order.status = OrderStatus.Completed
     order.payment_method = payload.payment_method ?? PaymentMethod.Cash
     order.payment_status = payload.payment_status ?? PaymentStatus.Paid
-    if (payload.note !== undefined) {
-      order.note = payload.note
-    }
     order.completed_at = new Date()
     await order.save()
 

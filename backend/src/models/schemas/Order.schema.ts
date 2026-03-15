@@ -50,10 +50,6 @@ const orderSchema = new Schema(
       default: 0,
       min: 0
     },
-    note: {
-      type: String,
-      default: null
-    },
     completed_at: {
       type: Date,
       default: null

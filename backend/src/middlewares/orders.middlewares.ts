@@ -34,11 +34,6 @@ export const checkoutOrderValidator = validate(
       payment_status: {
         optional: true,
         isIn: { options: [Object.values(PaymentStatus)], errorMessage: ORDERS_MESSAGES.PAYMENT_STATUS_IS_INVALID }
-      },
-      note: {
-        optional: true,
-        isString: { errorMessage: ORDERS_MESSAGES.NOTE_MUST_BE_STRING },
-        trim: true
       }
     },
     ['body']

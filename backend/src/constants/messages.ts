@@ -87,7 +87,6 @@ export const ORDERS_MESSAGES = {
   ORDER_ITEM_PRODUCT_ID_REQUIRED: 'product_id trong items là bắt buộc',
   ORDER_ITEM_PRODUCT_ID_MUST_BE_MONGO_ID: 'product_id trong items không hợp lệ',
   ORDER_ITEM_QUANTITY_MUST_BE_POSITIVE_INT: 'quantity trong items phải là số nguyên dương',
-  NOTE_MUST_BE_STRING: 'Ghi chú phải là chuỗi',
   PAYMENT_METHOD_IS_INVALID: 'Phương thức thanh toán không hợp lệ',
   PAYMENT_STATUS_IS_INVALID: 'Trạng thái thanh toán không hợp lệ',
   ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng',

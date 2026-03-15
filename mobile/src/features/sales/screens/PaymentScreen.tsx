@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import React, { useState, useCallback, useMemo } from 'react';
+=======
+import React, { useState, useCallback } from "react";
+>>>>>>> Stashed changes
 import {
   View,
   Text,
@@ -7,6 +11,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+<<<<<<< Updated upstream
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,21 +26,46 @@ import { usePosStore } from '../store/pos.store';
 import { checkoutOrder } from '../services/orders.service';
 import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
+=======
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScreenHeader } from "../../../ui/components";
+import { colors, spacing } from "../../../ui/theme";
+import { PaymentSuccessModal } from "../components";
+import { usePosStore } from "../store/pos.store";
+import { checkoutOrder } from "../services/orders.service";
+import { useAuthStore } from "../../../store/auth.store";
+import type { MainStackScreenProps } from "../../../types/navigation";
+>>>>>>> Stashed changes
 
-type Props = MainStackScreenProps<'Payment'>;
+type Props = MainStackScreenProps<"Payment">;
 
+<<<<<<< Updated upstream
 type PaymentMethod = 'cash' | 'transfer';
+=======
+type PaymentMethod = "cash" | "transfer";
+type PaymentStatus = "paid" | "unpaid";
+>>>>>>> Stashed changes
 
 const METHODS: {
   id: PaymentMethod;
   label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: React.ComponentProps<typeof Ionicons>["name"];
 }[] = [
+<<<<<<< Updated upstream
   { id: 'cash', label: 'Tiền mặt', icon: 'cash-outline' },
   { id: 'transfer', label: 'Chuyển khoản', icon: 'swap-horizontal-outline' },
 ];
 
 const formatAmount = (amount: number) => formatCurrencyVND(amount);
+=======
+  { id: "cash", label: "Tiền mặt", icon: "cash-outline" },
+  { id: "transfer", label: "Chuyển khoản", icon: "phone-portrait-outline" },
+];
+
+const formatAmount = (amount: number) => amount.toLocaleString("vi-VN") + "₫";
+>>>>>>> Stashed changes
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderCode, orderId, total, status, createdAt, staffName, items, customer } = route.params;
@@ -50,7 +80,12 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const posItems = usePosStore((s) => s.items);
   const posTotal = usePosStore((s) => s.grandTotal);
 
+<<<<<<< Updated upstream
   const [method, setMethod] = useState<PaymentMethod>('cash');
+=======
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
+>>>>>>> Stashed changes
   const [showSuccess, setShowSuccess] = useState(false);
   const [isCheckingOutDirect, setIsCheckingOutDirect] = useState(false);
 
@@ -106,15 +141,19 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       // Current POS session → use posStore (handles its own loading state)
       const ok = await checkout(accessToken, {
         payment_method: method,
+<<<<<<< Updated upstream
         payment_status: 'paid',
+=======
+        payment_status: paymentStatus,
+>>>>>>> Stashed changes
       });
       if (ok) {
         setShowSuccess(true);
       } else {
         const err = usePosStore.getState().error;
         if (err) {
-          Alert.alert('Thanh toán thất bại', err, [
-            { text: 'OK', onPress: () => usePosStore.getState().clearError() },
+          Alert.alert("Thanh toán thất bại", err, [
+            { text: "OK", onPress: () => usePosStore.getState().clearError() },
           ]);
         }
       }
@@ -124,16 +163,27 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         await checkoutOrder(accessToken, orderId, {
           payment_method: method,
+<<<<<<< Updated upstream
           payment_status: 'paid',
+=======
+          payment_status: paymentStatus,
+>>>>>>> Stashed changes
         });
         setShowSuccess(true);
       } catch (err) {
-        Alert.alert('Thanh toán thất bại', err instanceof Error ? err.message : 'Có lỗi xảy ra');
+        Alert.alert(
+          "Thanh toán thất bại",
+          err instanceof Error ? err.message : "Có lỗi xảy ra",
+        );
       } finally {
         setIsCheckingOutDirect(false);
       }
     }
+<<<<<<< Updated upstream
   }, [accessToken, orderId, checkout, method, posOrderId]);
+=======
+  }, [accessToken, orderId, checkout, method, paymentStatus]);
+>>>>>>> Stashed changes
 
   const handleSuccessOk = useCallback(() => {
     setShowSuccess(false);
@@ -214,10 +264,24 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 onPress={() => setMethod(m.id)}
                 activeOpacity={0.7}
               >
+<<<<<<< Updated upstream
+=======
+                {method === m.id && (
+                  <View style={styles.checkBadge}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+>>>>>>> Stashed changes
                 <Ionicons
                   name={m.icon}
                   size={28}
-                  color={method === m.id ? colors.primary : colors.textSecondary}
+                  color={
+                    method === m.id ? colors.primary : colors.textSecondary
+                  }
                 />
                 <Text
                   style={[
@@ -231,10 +295,51 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             ))}
           </View>
         </View>
+<<<<<<< Updated upstream
+=======
+
+        {/* ── Payment status ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trạng thái thanh toán</Text>
+          <View style={styles.methodRow}>
+            {(["paid", "unpaid"] as PaymentStatus[]).map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[
+                  styles.statusCard,
+                  paymentStatus === s && styles.methodCardActive,
+                ]}
+                onPress={() => setPaymentStatus(s)}
+                activeOpacity={0.7}
+              >
+                {paymentStatus === s && (
+                  <View style={styles.checkBadge}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+                <Text
+                  style={[
+                    styles.methodLabel,
+                    paymentStatus === s && styles.methodLabelActive,
+                  ]}
+                >
+                  {s === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+>>>>>>> Stashed changes
       </ScrollView>
 
       {/* ── Confirm CTA ── */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}
+      >
         <TouchableOpacity
           style={[styles.ctaBtn, isBusy && styles.ctaBtnDisabled]}
           onPress={isBusy ? undefined : handleConfirm}
@@ -271,6 +376,7 @@ const styles = StyleSheet.create({
   orderInfo: {
     backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
+<<<<<<< Updated upstream
     paddingVertical: spacing.md,
     marginBottom: spacing.sm,
   },
@@ -297,6 +403,25 @@ const styles = StyleSheet.create({
   staffText: {
     fontSize: 12,
     color: colors.textSecondary,
+=======
+    paddingVertical: spacing.lg,
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  totalLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  totalAmount: {
+    fontSize: 34,
+    fontWeight: "800",
+    color: colors.linkOrange,
+    letterSpacing: 0.5,
+>>>>>>> Stashed changes
   },
   /* Section */
   section: {
@@ -307,9 +432,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
@@ -349,13 +474,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   methodRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
     paddingBottom: spacing.sm,
   },
   methodCard: {
     flex: 1,
+<<<<<<< Updated upstream
     alignItems: 'center',
     paddingVertical: spacing.sm + 6,
     borderRadius: 10,
@@ -363,20 +489,54 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.background,
     gap: spacing.xs,
+=======
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    gap: spacing.xs,
+    position: "relative",
+>>>>>>> Stashed changes
   },
   methodCardActive: {
     borderColor: colors.primary,
-    backgroundColor: '#EBF2FF',
+    backgroundColor: "#EBF2FF",
   },
   methodLabel: {
     fontSize: 13,
+<<<<<<< Updated upstream
     color: colors.textPrimary,
     fontWeight: '500',
+=======
+    color: colors.textSecondary,
+    fontWeight: "500",
+>>>>>>> Stashed changes
   },
   methodLabelActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
+<<<<<<< Updated upstream
+=======
+  checkBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+  },
+  statusCard: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    position: "relative",
+  },
+>>>>>>> Stashed changes
   /* Footer */
   footer: {
     backgroundColor: colors.background,
@@ -387,16 +547,22 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     backgroundColor: colors.primary,
+<<<<<<< Updated upstream
     borderRadius: 14,
     paddingVertical: spacing.md + 2,
     alignItems: 'center',
+=======
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+>>>>>>> Stashed changes
   },
   ctaBtnDisabled: {
     backgroundColor: colors.textDisabled,
   },
   ctaText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
 });
