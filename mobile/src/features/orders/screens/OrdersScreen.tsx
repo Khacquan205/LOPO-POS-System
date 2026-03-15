@@ -1,21 +1,28 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { View, FlatList, StyleSheet, Text, ActivityIndicator, RefreshControl } from 'react-native';
-import { ScreenHeader } from '../../../ui/components';
-import { colors, spacing, typography } from '../../../ui/theme';
-import { FilterChip, OrderRow, SearchBar } from '../components';
+import React, { useCallback, useEffect, useState, useMemo } from "react";
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  Text,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
+import { ScreenHeader } from "../../../ui/components";
+import { colors, spacing, typography } from "../../../ui/theme";
+import { FilterChip, OrderRow, SearchBar } from "../components";
 import {
   STATUS_FILTER_LABELS,
   type OrderStatusApi,
   type OrderRowData,
-} from '../types/order.types';
-import { useOrdersStore } from '../store/orders.store';
-import { useAuthStore } from '../../../store/auth.store';
-import type { ApiOrder } from '../../sales/services/orders.service';
-import type { MainStackScreenProps } from '../../../types/navigation';
+} from "../types/order.types";
+import { useOrdersStore } from "../store/orders.store";
+import { useAuthStore } from "../../../store/auth.store";
+import type { ApiOrder } from "../../sales/services/orders.service";
+import type { MainStackScreenProps } from "../../../types/navigation";
 
-type FilterType = OrderStatusApi | 'ALL';
+type FilterType = OrderStatusApi | "ALL";
 
-const FILTER_OPTIONS: FilterType[] = ['ALL', 'draft', 'completed', 'cancelled'];
+const FILTER_OPTIONS: FilterType[] = ["ALL", "draft", "completed", "cancelled"];
 
 function mapToRowData(order: ApiOrder): OrderRowData {
   return {
@@ -27,23 +34,25 @@ function mapToRowData(order: ApiOrder): OrderRowData {
   };
 }
 
-type Props = MainStackScreenProps<'Orders'>;
+type Props = MainStackScreenProps<"Orders">;
 
 export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
   const { orders, isLoading, error, fetchOrders } = useOrdersStore();
   const token = useAuthStore((s) => s.accessToken);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>("ALL");
 
   const load = useCallback(() => {
     if (token) fetchOrders(token);
   }, [token, fetchOrders]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const filteredOrders = useMemo(() => {
     let result = orders;
-    if (selectedFilter !== 'ALL') {
+    if (selectedFilter !== "ALL") {
       result = result.filter((o) => o.status === selectedFilter);
     }
     if (searchQuery.trim()) {
@@ -51,25 +60,29 @@ export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
       result = result.filter((o) => o.order_code.toLowerCase().includes(q));
     }
     return [...result].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [orders, selectedFilter, searchQuery]);
 
   const getFilterCount = (filter: FilterType): number => {
-    if (filter === 'ALL') return orders.length;
+    if (filter === "ALL") return orders.length;
     return orders.filter((o) => o.status === filter).length;
   };
 
   const handleOrderPress = (order: ApiOrder): void => {
-    if (order.status === 'draft') {
-      navigation.navigate('DraftOrderDetail', { orderId: order.order_id });
+    if (order.status === "draft") {
+      navigation.navigate("Sales", { draftOrderId: order.order_id });
     } else {
-      navigation.navigate('OrderBillReadOnly', { orderId: order.order_id });
+      navigation.navigate("OrderBillReadOnly", { orderId: order.order_id });
     }
   };
 
   const renderItem = ({ item }: { item: ApiOrder }) => (
-    <OrderRow order={mapToRowData(item)} onPress={() => handleOrderPress(item)} />
+    <OrderRow
+      order={mapToRowData(item)}
+      onPress={() => handleOrderPress(item)}
+    />
   );
 
   const renderEmpty = () => {
@@ -77,7 +90,7 @@ export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>
-          {error ? error : 'Không có đơn hàng nào'}
+          {error ? error : "Không có đơn hàng nào"}
         </Text>
       </View>
     );
@@ -123,7 +136,11 @@ export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={filteredOrders.length === 0 && styles.emptyList}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={load} colors={[colors.primary]} />
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={load}
+            colors={[colors.primary]}
+          />
         }
       />
     </View>
@@ -140,16 +157,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   filtersRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   loader: {
     marginTop: spacing.xl,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: spacing.xxl,
   },
   emptyText: {

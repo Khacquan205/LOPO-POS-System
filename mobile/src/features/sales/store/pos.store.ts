@@ -1,12 +1,14 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 import {
   createDraftOrder,
+  getOrderDetail,
   updateOrderItems,
   checkoutOrder,
   cancelDraftOrder,
   type CheckoutPayload,
-} from '../services/orders.service';
-import { ApiError } from '../../../lib/api/client';
+  type ApiOrderItem,
+} from "../services/orders.service";
+import { ApiError } from "../../../lib/api/client";
 
 // ── Cart item (mirrors PickedItem + itemId for list key) ─────
 
@@ -45,20 +47,41 @@ interface PosState {
    */
   addPickedItems: (
     token: string,
-    picked: Array<{ productId: string; productName: string; unitPrice: number; quantity: number; trackInventory: boolean; onHand: number }>,
+    picked: Array<{
+      productId: string;
+      productName: string;
+      unitPrice: number;
+      quantity: number;
+      trackInventory: boolean;
+      onHand: number;
+    }>,
   ) => Promise<void>;
 
   /** Increment an item's quantity by 1, sync to backend */
-  incrementItem: (token: string, productId: string, onHand: number, trackInventory: boolean) => Promise<void>;
+  incrementItem: (
+    token: string,
+    productId: string,
+    onHand: number,
+    trackInventory: boolean,
+  ) => Promise<void>;
 
   /** Decrement an item's quantity by 1 (removes if hits 0), sync to backend */
   decrementItem: (token: string, productId: string) => Promise<void>;
 
   /** Set absolute quantity for an item, sync to backend */
-  setItemQty: (token: string, productId: string, qty: number, onHand: number, trackInventory: boolean) => Promise<void>;
+  setItemQty: (
+    token: string,
+    productId: string,
+    qty: number,
+    onHand: number,
+    trackInventory: boolean,
+  ) => Promise<void>;
 
   /** Checkout: calls POST /orders/:id/checkout */
   checkout: (token: string, payload: CheckoutPayload) => Promise<boolean>;
+
+  /** Load an existing draft order into POS session */
+  loadDraftOrder: (token: string, orderId: string) => Promise<boolean>;
 
   /** Cancel the draft order */
   cancel: (token: string) => Promise<boolean>;
@@ -81,6 +104,16 @@ function buildPayload(items: PosCartItem[]) {
 
 function calcTotal(items: PosCartItem[]): number {
   return items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+}
+
+function mapApiItemsToCart(items: ApiOrderItem[]): PosCartItem[] {
+  return items.map((it) => ({
+    itemId: `si_${it.product_id}`,
+    productId: it.product_id,
+    productName: it.product_name_snapshot,
+    unitPrice: it.unit_price,
+    quantity: it.quantity,
+  }));
 }
 
 // ── Store ────────────────────────────────────────────────────
@@ -107,7 +140,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       set({ orderId: order_id, orderCode: order_code, isCreatingOrder: false });
       return order_id;
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể tạo đơn hàng';
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể tạo đơn hàng";
       set({ isCreatingOrder: false, error: msg });
       return null;
     }
@@ -119,7 +153,8 @@ export const usePosStore = create<PosState>((set, get) => ({
     const current = get().items;
     picked.forEach((p) => {
       if (!p.trackInventory) return; // no stock limit
-      const existingQty = current.find((it) => it.productId === p.productId)?.quantity ?? 0;
+      const existingQty =
+        current.find((it) => it.productId === p.productId)?.quantity ?? 0;
       if (existingQty + p.quantity > p.onHand) {
         validationError.push(
           `"${p.productName}" chỉ còn ${p.onHand - existingQty} trong kho`,
@@ -127,7 +162,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       }
     });
     if (validationError.length > 0) {
-      set({ error: validationError.join('\n') });
+      set({ error: validationError.join("\n") });
       return;
     }
 
@@ -160,9 +195,15 @@ export const usePosStore = create<PosState>((set, get) => ({
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể cập nhật giỏ hàng';
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể cập nhật giỏ hàng";
       // Rollback to previous cart on failure
-      set({ items: current, grandTotal: calcTotal(current), isUpdatingItems: false, error: msg });
+      set({
+        items: current,
+        grandTotal: calcTotal(current),
+        isUpdatingItems: false,
+        error: msg,
+      });
     }
   },
 
@@ -189,8 +230,14 @@ export const usePosStore = create<PosState>((set, get) => ({
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể cập nhật giỏ hàng';
-      set({ items: current, grandTotal: calcTotal(current), isUpdatingItems: false, error: msg });
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể cập nhật giỏ hàng";
+      set({
+        items: current,
+        grandTotal: calcTotal(current),
+        isUpdatingItems: false,
+        error: msg,
+      });
     }
   },
 
@@ -214,8 +261,14 @@ export const usePosStore = create<PosState>((set, get) => ({
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể cập nhật giỏ hàng';
-      set({ items: current, grandTotal: calcTotal(current), isUpdatingItems: false, error: msg });
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể cập nhật giỏ hàng";
+      set({
+        items: current,
+        grandTotal: calcTotal(current),
+        isUpdatingItems: false,
+        error: msg,
+      });
     }
   },
 
@@ -242,19 +295,56 @@ export const usePosStore = create<PosState>((set, get) => ({
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể cập nhật giỏ hàng';
-      set({ items: current, grandTotal: calcTotal(current), isUpdatingItems: false, error: msg });
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể cập nhật giỏ hàng";
+      set({
+        items: current,
+        grandTotal: calcTotal(current),
+        isUpdatingItems: false,
+        error: msg,
+      });
+    }
+  },
+
+  loadDraftOrder: async (token, orderId) => {
+    set({ isCreatingOrder: true, error: null });
+    try {
+      const result = await getOrderDetail(token, orderId);
+      if (result.order.status !== "draft") {
+        set({
+          isCreatingOrder: false,
+          error: "Đơn hàng này không còn ở trạng thái nháp",
+        });
+        return false;
+      }
+
+      const cartItems = mapApiItemsToCart(result.items);
+      set({
+        orderId: result.order.order_id,
+        orderCode: result.order.order_code,
+        items: cartItems,
+        grandTotal: result.order.grand_total ?? calcTotal(cartItems),
+        isCreatingOrder: false,
+      });
+      return true;
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.getFieldErrors() || err.message
+          : "Không thể tải đơn nháp";
+      set({ isCreatingOrder: false, error: msg });
+      return false;
     }
   },
 
   checkout: async (token, payload) => {
     const { orderId, items } = get();
     if (!orderId) {
-      set({ error: 'Chưa có đơn hàng' });
+      set({ error: "Chưa có đơn hàng" });
       return false;
     }
     if (items.length === 0) {
-      set({ error: 'Đơn hàng chưa có sản phẩm nào' });
+      set({ error: "Đơn hàng chưa có sản phẩm nào" });
       return false;
     }
 
@@ -264,7 +354,10 @@ export const usePosStore = create<PosState>((set, get) => ({
       set({ isCheckingOut: false });
       return true;
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Thanh toán thất bại';
+      const msg =
+        err instanceof ApiError
+          ? err.getFieldErrors() || err.message
+          : "Thanh toán thất bại";
       set({ isCheckingOut: false, error: msg });
       return false;
     }
@@ -273,7 +366,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   cancel: async (token) => {
     const { orderId } = get();
     if (!orderId) {
-      set({ error: 'Chưa có đơn hàng để hủy' });
+      set({ error: "Chưa có đơn hàng để hủy" });
       return false;
     }
 
@@ -283,7 +376,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       set({ isCancelling: false });
       return true;
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Không thể hủy đơn hàng';
+      const msg =
+        err instanceof ApiError ? err.message : "Không thể hủy đơn hàng";
       set({ isCancelling: false, error: msg });
       return false;
     }
