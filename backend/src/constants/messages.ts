@@ -29,7 +29,11 @@ export const USERS_MESSAGES = {
   REFRESH_TOKEN_IS_REQUIRED: 'Refresh token là bắt buộc',
   REFRESH_TOKEN_IS_INVALID: 'Refresh token không hợp lệ',
   REFRESH_TOKEN_SUCCESS: 'Làm mới token thành công',
-  UPDATE_STAFF_STATUS_SUCCESS: 'Cập nhật trạng thái nhân viên thành công'
+  UPDATE_STAFF_STATUS_SUCCESS: 'Cập nhật trạng thái nhân viên thành công',
+  UPDATE_STORE_SUCCESS: 'Cập nhật cửa hàng thành công',
+  DELETE_STORE_SUCCESS: 'Xóa cửa hàng thành công',
+  DELETE_ALL_STORES_SUCCESS: 'Xóa tất cả cửa hàng thành công',
+  STORE_NOT_FOUND: 'Không tìm thấy cửa hàng'
 } as const
 
 export const CATEGORIES_MESSAGES = {

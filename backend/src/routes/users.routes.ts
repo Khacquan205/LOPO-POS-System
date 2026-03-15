@@ -8,7 +8,9 @@ import {
   registerStaffController,
   registerController,
   getStaffsController,
-  updateStaffStatusController
+  updateStaffStatusController,
+  updateStoreNameController,
+  deleteStoreController
 } from '~/controllers/user.controllers.js'
 import {
   accessTokenValidator,
@@ -17,7 +19,9 @@ import {
   registerOwnerValidator,
   registerStaffValidator,
   refreshTokenValidator,
-  updateStaffStatusValidator
+  updateStaffStatusValidator,
+  storeIdParamValidator,
+  updateStoreNameValidator
 } from '~/middlewares/users.middlewares.js'
 import { wrapRequestHandler } from '~/utils/handlers.js'
 
@@ -33,6 +37,21 @@ usersRouter.post('/staff', accessTokenValidator, ownerOnlyValidator, registerSta
 
 usersRouter.get('/owner/staff-list', accessTokenValidator, ownerOnlyValidator, wrapRequestHandler(getStaffsController))
 usersRouter.patch('/owner/staff/:staff_id/status', accessTokenValidator, ownerOnlyValidator, updateStaffStatusValidator, wrapRequestHandler(updateStaffStatusController))
+usersRouter.patch(
+  '/owner/stores/:store_id',
+  accessTokenValidator,
+  ownerOnlyValidator,
+  storeIdParamValidator,
+  updateStoreNameValidator,
+  wrapRequestHandler(updateStoreNameController)
+)
+usersRouter.delete(
+  '/owner/stores/:store_id',
+  accessTokenValidator,
+  ownerOnlyValidator,
+  storeIdParamValidator,
+  wrapRequestHandler(deleteStoreController)
+)
 
 usersRouter.post('/login', loginValidator, wrapRequestHandler(loginController))
 usersRouter.post('/logout', accessTokenValidator, refreshTokenValidator, wrapRequestHandler(logoutController))
