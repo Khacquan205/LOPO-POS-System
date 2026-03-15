@@ -13,6 +13,7 @@ interface Product {
   name: string;
   price: number;
   onHand: number;
+  trackInventory: boolean;
   category: string;
   categoryColor: string;
   image?: string;
@@ -88,7 +89,9 @@ export const ProductItem: React.FC<ProductItemProps> = ({
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productPrice}>{formatPrice(product.price)}</Text>
-          <Text style={styles.productStock}>Tồn: {product.onHand}</Text>
+          {product.trackInventory && (
+            <Text style={styles.productStock}>Tồn: {product.onHand}</Text>
+          )}
         </View>
       </TouchableOpacity>
       <View

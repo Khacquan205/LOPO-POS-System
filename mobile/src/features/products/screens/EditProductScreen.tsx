@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Alert, ScrollView, StyleSheet } from "react-native";
+import { Alert, Modal, View, ScrollView, StyleSheet } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CommonActions } from "@react-navigation/native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
 import { FooterActions } from "../components/createProduct/FooterActions";
@@ -16,6 +17,9 @@ import { useCategoriesStore } from "../store/categories.store";
 import { useInventoryStore } from "../store/inventory.store";
 import type { MainStackScreenProps } from "../../../types/navigation";
 import { uploadImageToCloudinary } from "../../../lib/cloudinary";
+import { Camera, CameraView } from "expo-camera";
+import { ApiError } from "../../../lib/api/client";
+import { useToast } from "../../../ui/components";
 
 type Props = MainStackScreenProps<"EditProduct">;
 
@@ -30,6 +34,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const fetchStockByProduct = useInventoryStore(
     (state) => state.fetchStockByProduct,
   );
+  const { showSuccessToast } = useToast();
   const [categoryList, setCategoryList] = useState<PickerCategory[]>([]);
 
   const editingProduct = useMemo(
@@ -65,6 +70,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
     editingProduct?.image,
   );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isScanningBarcode, setIsScanningBarcode] = useState(false);
 
   const categoryLookup = useMemo(
     () =>
@@ -166,50 +172,143 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         name: categoryName,
         is_active: true,
       });
+      // Sau khi tạo thành công, mở lại bottom sheet chọn loại để thấy category mới
+      setShowCategoryPicker(true);
     } catch (error) {
       console.warn("Create category failed:", error);
     }
     setShowAddCategory(false);
   };
 
-  const handleSelectImage = async () => {
+  const handleScanBarcodePress = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Không có quyền truy cập ảnh",
-          "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh sản phẩm.",
+          "Không có quyền dùng camera",
+          "Ứng dụng cần quyền truy cập camera để quét barcode.",
         );
         return;
       }
+      setIsScanningBarcode(true);
+    } catch (error) {
+      console.warn("Request camera permission for barcode failed:", error);
+      Alert.alert(
+        "Không thể dùng camera",
+        "Đã có lỗi xảy ra khi xin quyền camera. Vui lòng thử lại.",
+      );
+    }
+  };
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-      });
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (!data) return;
+    setIsScanningBarcode(false);
+    setBarcode(data);
+  };
 
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
+  const pickImageFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Không có quyền truy cập ảnh",
+        "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh sản phẩm.",
+      );
+      return;
+    }
 
-      const localUri = result.assets[0]?.uri;
-      if (!localUri) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
 
-      setImageUrl(localUri);
-      setIsUploadingImage(true);
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return;
+    }
 
+    const localUri = result.assets[0]?.uri;
+    if (!localUri) return;
+
+    setImageUrl(localUri);
+    setIsUploadingImage(true);
+
+    try {
       const uploadedUrl = await uploadImageToCloudinary(localUri);
       setImageUrl(uploadedUrl);
-      setIsUploadingImage(false);
     } catch (error) {
       console.warn("Upload image failed:", error);
-      setIsUploadingImage(false);
       Alert.alert(
         "Không thể upload ảnh",
         "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
       );
+    } finally {
+      setIsUploadingImage(false);
     }
+  };
+
+  const captureImageWithCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Không có quyền dùng camera",
+        "Ứng dụng cần quyền truy cập camera để chụp ảnh sản phẩm.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return;
+    }
+
+    const localUri = result.assets[0]?.uri;
+    if (!localUri) return;
+
+    setImageUrl(localUri);
+    setIsUploadingImage(true);
+
+    try {
+      const uploadedUrl = await uploadImageToCloudinary(localUri);
+      setImageUrl(uploadedUrl);
+    } catch (error) {
+      console.warn("Upload image failed:", error);
+      Alert.alert(
+        "Không thể upload ảnh",
+        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
+      );
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleSelectImage = () => {
+    Alert.alert(
+      "Chọn ảnh sản phẩm",
+      "Bạn muốn lấy ảnh từ đâu?",
+      [
+        {
+          text: "Chụp ảnh",
+          onPress: () => {
+            void captureImageWithCamera();
+          },
+        },
+        {
+          text: "Chọn từ thư viện",
+          onPress: () => {
+            void pickImageFromLibrary();
+          },
+        },
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+      ],
+      { cancelable: true },
+    );
   };
 
   const handleSave = async () => {
@@ -218,6 +317,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
     const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
     const onHand = Number(inventory.replace(/[^0-9]/g, ""));
     const normalizedOnHand = Number.isFinite(onHand) ? onHand : 0;
+    const normalizedBarcode = barcode.trim();
 
     if (!productName.trim()) {
       Alert.alert("Thiếu thông tin", "Vui lòng nhập tên sản phẩm.");
@@ -237,6 +337,22 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
 
+    if (normalizedBarcode) {
+      const duplicate = products.find(
+        (p) =>
+          p.id !== route.params.productId &&
+          p.barcode != null &&
+          p.barcode === normalizedBarcode,
+      );
+      if (duplicate) {
+        Alert.alert(
+          "Mã vạch đã tồn tại",
+          "Mã vạch này đã được sử dụng cho một sản phẩm khác. Vui lòng nhập hoặc quét mã vạch khác.",
+        );
+        return;
+      }
+    }
+
     const categoryLookup = categoryList.map((item) => ({
       id: item.id,
       name: item.name,
@@ -251,7 +367,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           name: productName.trim(),
           price: normalizedPrice,
           category_id: selectedCategoryId,
-          barcode: barcode.trim() || undefined,
+          barcode: normalizedBarcode || undefined,
           image_url: imageUrl,
           track_inventory: manageInventory,
           on_hand: manageInventory ? normalizedOnHand : 0,
@@ -259,15 +375,30 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         categoryLookup,
       );
     } catch (error) {
+      if (error instanceof ApiError) {
+        const rawMessage = error.getFieldErrors();
+        const lower = rawMessage.toLowerCase();
+        const isBarcodeError =
+          lower.includes("barcode") || lower.includes("mã vạch");
+
+        Alert.alert(
+          "Không thể lưu sản phẩm",
+          isBarcodeError
+            ? "Mã vạch này đã được sử dụng cho một sản phẩm khác. Vui lòng nhập hoặc quét mã vạch khác."
+            : rawMessage || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.",
+        );
+        return;
+      }
       console.warn("Update product failed:", error);
+      Alert.alert(
+        "Không thể lưu sản phẩm",
+        "Đã có lỗi xảy ra. Vui lòng thử lại.",
+      );
       return;
     }
 
-    // Navigate back with edited flag to trigger success toast
-    navigation.navigate("ProductDetail", {
-      productId: route.params.productId,
-      edited: true,
-    });
+    showSuccessToast("Cập nhật sản phẩm thành công!");
+    navigation.navigate("Products");
   };
 
   return (
@@ -291,7 +422,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           onPressSelectCategory={handleSelectCategory}
           barcode={barcode}
           onChangeBarcode={setBarcode}
-          onPressScanBarcode={() => console.log("Scan barcode pressed")}
+          onPressScanBarcode={handleScanBarcodePress}
           manageInventory={manageInventory}
           onChangeManageInventory={handleChangeManageInventory}
           inventory={inventory}
@@ -319,6 +450,22 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         onClose={() => setShowAddCategory(false)}
         onSubmit={handleAddCategorySubmit}
       />
+
+      <Modal
+        visible={isScanningBarcode}
+        animationType="slide"
+        onRequestClose={() => setIsScanningBarcode(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "black" }}>
+          <CameraView
+            style={{ flex: 1 }}
+            barcodeScannerSettings={{
+              barcodeTypes: ["ean13", "ean8", "upc_e", "upc_a", "code128", "qr"],
+            }}
+            onBarcodeScanned={({ data }) => handleBarCodeScanned({ data })}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
