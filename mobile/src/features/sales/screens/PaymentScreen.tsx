@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import React, { useState, useCallback, useMemo } from 'react';
-=======
-import React, { useState, useCallback } from "react";
->>>>>>> Stashed changes
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -11,64 +7,61 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-<<<<<<< Updated upstream
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenHeader } from '../../../ui/components';
-import { colors, spacing } from '../../../ui/theme';
-import { CustomerBar, OrderStatusChip, SummaryInfoRow } from '../../orders/components';
-import { formatCurrencyVND, formatDateTime, type OrderStatusApi } from '../../orders/types/order.types';
-import {
-  PaymentSuccessModal,
-} from '../components';
-import { usePosStore } from '../store/pos.store';
-import { checkoutOrder } from '../services/orders.service';
-import { useAuthStore } from '../../../store/auth.store';
-import type { MainStackScreenProps } from '../../../types/navigation';
-=======
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenHeader } from "../../../ui/components";
 import { colors, spacing } from "../../../ui/theme";
-import { PaymentSuccessModal } from "../components";
+import {
+  CustomerBar,
+  OrderStatusChip,
+  SummaryInfoRow,
+} from "../../orders/components";
+import {
+  formatCurrencyVND,
+  formatDateTime,
+  type OrderStatusApi,
+} from "../../orders/types/order.types";
+import { PaymentSuccessModal, TransferQrCard } from "../components";
 import { usePosStore } from "../store/pos.store";
 import { checkoutOrder } from "../services/orders.service";
 import { useAuthStore } from "../../../store/auth.store";
 import type { MainStackScreenProps } from "../../../types/navigation";
->>>>>>> Stashed changes
 
 type Props = MainStackScreenProps<"Payment">;
 
-<<<<<<< Updated upstream
-type PaymentMethod = 'cash' | 'transfer';
-=======
 type PaymentMethod = "cash" | "transfer";
-type PaymentStatus = "paid" | "unpaid";
->>>>>>> Stashed changes
 
 const METHODS: {
   id: PaymentMethod;
   label: string;
   icon: React.ComponentProps<typeof Ionicons>["name"];
 }[] = [
-<<<<<<< Updated upstream
-  { id: 'cash', label: 'Tiền mặt', icon: 'cash-outline' },
-  { id: 'transfer', label: 'Chuyển khoản', icon: 'swap-horizontal-outline' },
+  { id: "cash", label: "Tiền mặt", icon: "cash-outline" },
+  { id: "transfer", label: "Chuyển khoản", icon: "swap-horizontal-outline" },
 ];
 
 const formatAmount = (amount: number) => formatCurrencyVND(amount);
-=======
-  { id: "cash", label: "Tiền mặt", icon: "cash-outline" },
-  { id: "transfer", label: "Chuyển khoản", icon: "phone-portrait-outline" },
-];
 
-const formatAmount = (amount: number) => amount.toLocaleString("vi-VN") + "₫";
->>>>>>> Stashed changes
+const TRANSFER_ACCOUNT = {
+  accountName: "NGUYEN KHAC QUAN",
+  accountNumber: "102873703683",
+  bankName: "VietinBank CN NINH THUAN - PGD PHAN RANG",
+  qrValue:
+    "00020101021138560010A0000007270126000697041501121028737036830208QRIBFTTA53037045802VN6304E447",
+};
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { orderCode, orderId, total, status, createdAt, staffName, items, customer } = route.params;
+  const {
+    orderCode,
+    orderId,
+    total,
+    status,
+    createdAt,
+    staffName,
+    items,
+    customer,
+  } = route.params;
   const insets = useSafeAreaInsets();
 
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -80,12 +73,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const posItems = usePosStore((s) => s.items);
   const posTotal = usePosStore((s) => s.grandTotal);
 
-<<<<<<< Updated upstream
-  const [method, setMethod] = useState<PaymentMethod>('cash');
-=======
   const [method, setMethod] = useState<PaymentMethod>("cash");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
->>>>>>> Stashed changes
   const [showSuccess, setShowSuccess] = useState(false);
   const [isCheckingOutDirect, setIsCheckingOutDirect] = useState(false);
 
@@ -126,11 +114,11 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     [createdAt],
   );
 
-  const displayStatus: OrderStatusApi = status ?? 'draft';
-  const displayStaff = staffName ?? staffFromAuth ?? 'Nhân viên';
+  const displayStatus: OrderStatusApi = status ?? "draft";
+  const displayStaff = staffName ?? staffFromAuth ?? "Nhân viên";
 
   const handleConfirm = useCallback(async () => {
-    // No orderId → legacy display-only path
+    // No orderId -> legacy display-only path
     if (!orderId) {
       setShowSuccess(true);
       return;
@@ -138,14 +126,10 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!accessToken) return;
 
     if (orderId === posOrderId) {
-      // Current POS session → use posStore (handles its own loading state)
+      // Current POS session -> use posStore (handles its own loading state)
       const ok = await checkout(accessToken, {
         payment_method: method,
-<<<<<<< Updated upstream
-        payment_status: 'paid',
-=======
-        payment_status: paymentStatus,
->>>>>>> Stashed changes
+        payment_status: "paid",
       });
       if (ok) {
         setShowSuccess(true);
@@ -163,11 +147,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         await checkoutOrder(accessToken, orderId, {
           payment_method: method,
-<<<<<<< Updated upstream
-          payment_status: 'paid',
-=======
-          payment_status: paymentStatus,
->>>>>>> Stashed changes
+          payment_status: "paid",
         });
         setShowSuccess(true);
       } catch (err) {
@@ -179,20 +159,26 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         setIsCheckingOutDirect(false);
       }
     }
-<<<<<<< Updated upstream
   }, [accessToken, orderId, checkout, method, posOrderId]);
-=======
-  }, [accessToken, orderId, checkout, method, paymentStatus]);
->>>>>>> Stashed changes
 
   const handleSuccessOk = useCallback(() => {
     setShowSuccess(false);
-    const posOrderId = usePosStore.getState().orderId;
-    if (orderId && orderId === posOrderId) {
+    const currentPosOrderId = usePosStore.getState().orderId;
+    if (orderId && orderId === currentPosOrderId) {
       resetSession();
     }
     navigation.popToTop();
   }, [navigation, orderId, resetSession]);
+
+  const successTitle =
+    method === "transfer"
+      ? "Chuyển khoản thành công!"
+      : "Thanh toán thành công!";
+
+  const successMessage =
+    method === "transfer"
+      ? `Đã xác nhận chuyển khoản ${formatAmount(displayTotal)} cho đơn hàng ${orderCode}`
+      : `Đã thanh toán thành công ${formatAmount(displayTotal)} cho đơn hàng ${orderCode}`;
 
   return (
     <View style={styles.container}>
@@ -200,10 +186,12 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + 120 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Order info ── */}
         <View style={styles.orderInfo}>
           <View style={styles.orderInfoTop}>
             <Text style={styles.orderCode}>{orderCode}</Text>
@@ -211,12 +199,15 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
           <Text style={styles.orderMeta}>{createdAtText}</Text>
           <View style={styles.staffRow}>
-            <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+            <Ionicons
+              name="person-outline"
+              size={14}
+              color={colors.textSecondary}
+            />
             <Text style={styles.staffText}> {displayStaff}</Text>
           </View>
         </View>
 
-        {/* ── Products ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sản phẩm ({totalItems} món)</Text>
           {summaryItems.length === 0 ? (
@@ -225,14 +216,17 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             summaryItems.map((item) => (
               <View key={item.id} style={styles.productRow}>
                 <Text style={styles.productQty}>{item.quantity}x</Text>
-                <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
-                <Text style={styles.productPrice}>{formatAmount(item.unitPrice * item.quantity)}</Text>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {item.productName}
+                </Text>
+                <Text style={styles.productPrice}>
+                  {formatAmount(item.unitPrice * item.quantity)}
+                </Text>
               </View>
             ))
           )}
         </View>
 
-        {/* ── Totals ── */}
         <View style={styles.totalsSection}>
           <SummaryInfoRow label="Tạm tính" value={formatAmount(subtotal)} />
           <SummaryInfoRow
@@ -244,13 +238,11 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
 
-        {/* ── Customer ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Khách hàng</Text>
           <CustomerBar customer={customer} isEditable={false} />
         </View>
 
-        {/* ── Payment method selector ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
           <View style={styles.methodRow}>
@@ -264,18 +256,6 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 onPress={() => setMethod(m.id)}
                 activeOpacity={0.7}
               >
-<<<<<<< Updated upstream
-=======
-                {method === m.id && (
-                  <View style={styles.checkBadge}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                )}
->>>>>>> Stashed changes
                 <Ionicons
                   name={m.icon}
                   size={28}
@@ -295,48 +275,17 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             ))}
           </View>
         </View>
-<<<<<<< Updated upstream
-=======
 
-        {/* ── Payment status ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trạng thái thanh toán</Text>
-          <View style={styles.methodRow}>
-            {(["paid", "unpaid"] as PaymentStatus[]).map((s) => (
-              <TouchableOpacity
-                key={s}
-                style={[
-                  styles.statusCard,
-                  paymentStatus === s && styles.methodCardActive,
-                ]}
-                onPress={() => setPaymentStatus(s)}
-                activeOpacity={0.7}
-              >
-                {paymentStatus === s && (
-                  <View style={styles.checkBadge}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                )}
-                <Text
-                  style={[
-                    styles.methodLabel,
-                    paymentStatus === s && styles.methodLabelActive,
-                  ]}
-                >
-                  {s === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
->>>>>>> Stashed changes
+        {method === "transfer" && (
+          <TransferQrCard
+            qrValue={TRANSFER_ACCOUNT.qrValue}
+            accountName={TRANSFER_ACCOUNT.accountName}
+            accountNumber={TRANSFER_ACCOUNT.accountNumber}
+            bankName={TRANSFER_ACCOUNT.bankName}
+          />
+        )}
       </ScrollView>
 
-      {/* ── Confirm CTA ── */}
       <View
         style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}
       >
@@ -348,16 +297,19 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           {isBusy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Xác nhận {formatAmount(displayTotal)}</Text>
+            <Text style={styles.ctaText}>
+              Xác nhận {formatAmount(displayTotal)}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* ── Success Modal ── */}
       <PaymentSuccessModal
         visible={showSuccess}
         orderCode={orderCode}
-        formattedTotal={formatAmount(total)}
+        formattedTotal={formatAmount(displayTotal)}
+        title={successTitle}
+        message={successMessage}
         onOk={handleSuccessOk}
       />
     </View>
@@ -372,22 +324,20 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing.xl,
   },
-  /* Order info */
   orderInfo: {
     backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
-<<<<<<< Updated upstream
     paddingVertical: spacing.md,
     marginBottom: spacing.sm,
   },
   orderInfoTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   orderCode: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   orderMeta: {
@@ -396,34 +346,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: spacing.xs,
   },
   staffText: {
     fontSize: 12,
     color: colors.textSecondary,
-=======
-    paddingVertical: spacing.lg,
-    alignItems: "center",
-    marginBottom: spacing.sm,
   },
-  totalLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-  },
-  totalAmount: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: colors.linkOrange,
-    letterSpacing: 0.5,
->>>>>>> Stashed changes
-  },
-  /* Section */
   section: {
     backgroundColor: colors.background,
     marginTop: spacing.sm,
@@ -446,8 +376,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
@@ -455,7 +385,7 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   productName: {
     flex: 1,
@@ -465,7 +395,7 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   totalsSection: {
@@ -481,24 +411,13 @@ const styles = StyleSheet.create({
   },
   methodCard: {
     flex: 1,
-<<<<<<< Updated upstream
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.sm + 6,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
     gap: spacing.xs,
-=======
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    gap: spacing.xs,
-    position: "relative",
->>>>>>> Stashed changes
   },
   methodCardActive: {
     borderColor: colors.primary,
@@ -506,38 +425,13 @@ const styles = StyleSheet.create({
   },
   methodLabel: {
     fontSize: 13,
-<<<<<<< Updated upstream
     color: colors.textPrimary,
-    fontWeight: '500',
-=======
-    color: colors.textSecondary,
     fontWeight: "500",
->>>>>>> Stashed changes
   },
   methodLabelActive: {
     color: colors.primary,
     fontWeight: "700",
   },
-<<<<<<< Updated upstream
-=======
-  checkBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-  },
-  statusCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    position: "relative",
-  },
->>>>>>> Stashed changes
-  /* Footer */
   footer: {
     backgroundColor: colors.background,
     borderTopWidth: 1,
@@ -547,15 +441,9 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     backgroundColor: colors.primary,
-<<<<<<< Updated upstream
     borderRadius: 14,
     paddingVertical: spacing.md + 2,
-    alignItems: 'center',
-=======
-    borderRadius: 12,
-    paddingVertical: spacing.md,
     alignItems: "center",
->>>>>>> Stashed changes
   },
   ctaBtnDisabled: {
     backgroundColor: colors.textDisabled,

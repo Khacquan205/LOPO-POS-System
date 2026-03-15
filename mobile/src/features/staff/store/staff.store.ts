@@ -1,11 +1,20 @@
-import { create } from 'zustand';
-import { staffMock, Staff, approvalMock, StaffApproval, ApprovalStatus } from '../mock/staff.mock';
+import { create } from "zustand";
+import {
+  staffMock,
+  Staff,
+  approvalMock,
+  StaffApproval,
+  ApprovalStatus,
+} from "../mock/staff.mock";
 
 interface StaffState {
   staffList: Staff[];
   approvalList: StaffApproval[];
-  addStaff: (data: Pick<Staff, 'name' | 'phone' | 'isActive'>) => void;
-  updateStaff: (id: string, data: Partial<Pick<Staff, 'name' | 'phone' | 'isActive'>>) => void;
+  addStaff: (data: Pick<Staff, "name" | "phone" | "isActive">) => void;
+  updateStaff: (
+    id: string,
+    data: Partial<Pick<Staff, "name" | "phone" | "isActive">>,
+  ) => void;
   removeStaff: (id: string) => void;
   setApprovalStatus: (id: string, status: ApprovalStatus) => void;
   blockApproval: (id: string) => void;
@@ -13,16 +22,16 @@ interface StaffState {
 
 let nextId = staffMock.length + 1;
 
-const pad = (n: number): string => String(n).padStart(8, '0');
+const pad = (n: number): string => String(n).padStart(8, "0");
 
 const nowString = (): string => {
   const d = new Date();
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  const ss = String(d.getSeconds()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
   return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`;
 };
 
@@ -36,6 +45,7 @@ export const useStaffStore = create<StaffState>((set) => ({
       const newStaff: Staff = {
         id,
         staffCode: `ST${pad(Number(id))}`,
+        role: "staff",
         createdAt: nowString(),
         ...data,
       };
@@ -61,7 +71,8 @@ export const useStaffStore = create<StaffState>((set) => ({
           ? {
               ...a,
               status,
-              rejectedCount: status === 'rejected' ? a.rejectedCount + 1 : a.rejectedCount,
+              rejectedCount:
+                status === "rejected" ? a.rejectedCount + 1 : a.rejectedCount,
             }
           : a,
       ),
@@ -70,7 +81,7 @@ export const useStaffStore = create<StaffState>((set) => ({
   blockApproval: (id) =>
     set((state) => ({
       approvalList: state.approvalList.map((a) =>
-        a.id === id ? { ...a, status: 'blocked' } : a,
+        a.id === id ? { ...a, status: "blocked" } : a,
       ),
     })),
 }));
