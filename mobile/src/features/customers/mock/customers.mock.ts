@@ -8,9 +8,10 @@ export interface Customer {
   id: string;
   code: string;
   name: string;
-  code: string;
   phone: string;
   status: CustomerStatus;
+  totalOrders?: number;
+  totalSpent?: number;
 }
 
 // ── Mock Data ────────────────────────────────────────────────
@@ -20,6 +21,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000001",
     name: "Nguyễn Văn Thành",
     phone: "0365416503",
+    status: "Đang hoạt động",
     totalOrders: 15,
     totalSpent: 2500000,
   },
@@ -28,6 +30,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000002",
     name: "Trịnh Thành Đạt",
     phone: "0365416501",
+    status: "Đang hoạt động",
     totalOrders: 8,
     totalSpent: 1200000,
   },
@@ -36,6 +39,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000003",
     name: "Lương Minh Trang",
     phone: "0912345600",
+    status: "Đang hoạt động",
     totalOrders: 22,
     totalSpent: 4500000,
   },
@@ -44,6 +48,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000004",
     name: "Nguyễn Việt Nam",
     phone: "0912345678",
+    status: "Ngừng hoạt động",
     totalOrders: 5,
     totalSpent: 750000,
   },
@@ -52,6 +57,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000005",
     name: "Lê Trung Lương",
     phone: "0923456789",
+    status: "Đang hoạt động",
     totalOrders: 12,
     totalSpent: 1800000,
   },
@@ -60,6 +66,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000006",
     name: "Nguyễn Bá Trạc",
     phone: "0934567890",
+    status: "Khóa tài khoản",
     totalOrders: 3,
     totalSpent: 450000,
   },
@@ -68,6 +75,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000007",
     name: "Đặng Văn Giang",
     phone: "0967890123",
+    status: "Đang hoạt động",
     totalOrders: 18,
     totalSpent: 3200000,
   },
@@ -76,6 +84,7 @@ export const customersMock: Customer[] = [
     code: "CUS00000008",
     name: "Bùi Thị Hoa",
     phone: "0978901234",
+    status: "Đang hoạt động",
     totalOrders: 7,
     totalSpent: 980000,
   },
@@ -91,6 +100,7 @@ export const createCustomer = (name: string, phone: string): Customer => {
     code: `CUS${id.padStart(8, "0")}`,
     name,
     phone,
+    status: "Đang hoạt động",
     totalOrders: 0,
     totalSpent: 0,
   };

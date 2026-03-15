@@ -6,6 +6,8 @@ interface Props {
   orderCode: string;
   formattedTotal: string;
   onOk: () => void;
+  title?: string;
+  message?: string;
 }
 
 export const PaymentSuccessModal: React.FC<Props> = ({
@@ -13,6 +15,8 @@ export const PaymentSuccessModal: React.FC<Props> = ({
   orderCode,
   formattedTotal,
   onOk,
+  title,
+  message,
 }) => (
   <CommonAlertModal
     visible={visible}

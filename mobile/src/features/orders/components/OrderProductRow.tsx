@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing } from '../../../ui/theme';
-import { formatCurrencyVND, type OrderItemDisplay } from '../types/order.types';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing } from "../../../ui/theme";
+import { formatCurrencyVND, type OrderItemDisplay } from "../types/order.types";
 
 interface OrderProductRowProps {
   item: OrderItemDisplay;
@@ -17,15 +17,17 @@ export const OrderProductRow: React.FC<OrderProductRowProps> = ({ item }) => {
         <Text style={styles.name} numberOfLines={2}>{item.productName}</Text>
         {item.note ? <Text style={[styles.note, styles.noteWarning]}>{item.note}</Text> : null}
       </View>
-      <Text style={styles.price}>{formatCurrencyVND(item.unitPrice * item.quantity)}</Text>
+      <Text style={styles.price}>
+        {formatCurrencyVND(item.unitPrice * item.quantity)}
+      </Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.background,
@@ -35,13 +37,13 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 6,
     backgroundColor: colors.surfaceSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: spacing.sm,
   },
   qty: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   nameCol: {
@@ -51,19 +53,19 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   note: {
-    fontSize: 12,
-    color: colors.textSecondary,
     marginTop: 2,
+    fontSize: 12,
+    fontWeight: "500",
   },
   noteWarning: {
     color: colors.error,
   },
   price: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
 });

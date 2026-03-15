@@ -13,17 +13,19 @@ interface FilterBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onSelectOption?: (option: "active" | "inactive") => void;
+  onClearAll?: () => void;
 }
 
 const FILTER_OPTIONS: Array<{ key: "active" | "inactive"; label: string }> = [
   { key: "active", label: "Đang hoạt động" },
-  { key: "inactive", label: "Không dùng nữa" },
+  { key: "inactive", label: "Ngừng hoạt động" },
 ];
 
 export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
   visible,
   onClose,
   onSelectOption,
+  onClearAll,
 }) => {
   return (
     <Modal
@@ -53,6 +55,16 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
               </TouchableOpacity>
             ))}
           </View>
+
+          {onClearAll && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              activeOpacity={0.9}
+              onPress={onClearAll}
+            >
+              <Text style={styles.clearButtonText}>Xóa bộ lọc</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.closeButton}
@@ -123,5 +135,20 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: "600",
     fontSize: 16,
+  },
+  clearButton: {
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  clearButtonText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: "500",
+    fontSize: 15,
   },
 });

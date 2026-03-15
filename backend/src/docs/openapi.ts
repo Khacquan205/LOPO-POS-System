@@ -360,8 +360,7 @@ const openApiSpec = {
         type: 'object',
         properties: {
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
-          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
-          note: { type: 'string', nullable: true, example: 'Khách mang về' }
+          payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' }
         }
       },
       OrderResult: {
@@ -375,7 +374,6 @@ const openApiSpec = {
           payment_method: { type: 'string', enum: ['cash', 'bank_transfer', 'vietqr', 'ewallet'], example: 'cash' },
           payment_status: { type: 'string', enum: ['pending', 'paid', 'failed', 'refunded'], example: 'paid' },
           grand_total: { type: 'number', example: 70000 },
-          note: { type: 'string', nullable: true, example: 'Khách mang về' },
           completed_at: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' }
@@ -705,6 +703,115 @@ const openApiSpec = {
           '404': {
             description: 'Không tìm thấy người dùng'
           }
+        }
+      }
+    },
+    '/api/users/owner/stores/{store_id}': {
+      patch: {
+        tags: ['Stores'],
+        summary: 'Owner đổi tên cửa hàng',
+        description: 'Cho phép owner cập nhật tên cửa hàng theo store_id thuộc sở hữu của mình.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'store_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID của cửa hàng (MongoDB ObjectId)'
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: {
+                    type: 'string',
+                    maxLength: 100,
+                    example: 'LOPO Mart Chi nhánh 2'
+                  } 
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Cập nhật cửa hàng thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Cập nhật cửa hàng thành công' },
+                    result: {
+                      type: 'object',
+                      properties: {
+                        store_id: { type: 'string' },
+                        name: { type: 'string' },
+                        owner_id: { type: 'string' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        updated_at: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không phải owner' },
+          '404': { description: 'Không tìm thấy cửa hàng' },
+          '422': { description: 'store_id không hợp lệ hoặc tên trống' }
+        }
+      },
+      delete: {
+        tags: ['Stores'],
+        summary: 'Owner xóa một cửa hàng',
+        description: 'Chỉ owner được phép xóa cửa hàng thuộc quyền sở hữu của mình.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'store_id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID của cửa hàng (MongoDB ObjectId)'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Xóa cửa hàng thành công',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Xóa cửa hàng thành công' },
+                    result: {
+                      type: 'object',
+                      properties: {
+                        deleted_store_id: { type: 'string' },
+                        new_active_store_id: {
+                          type: 'string',
+                          nullable: true,
+                          description: 'store_id mới đang hoạt động của owner (nếu có)'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '401': { description: 'Thiếu hoặc sai access token' },
+          '403': { description: 'Không phải owner' },
+          '404': { description: 'Không tìm thấy cửa hàng' },
+          '422': { description: 'store_id không hợp lệ' }
         }
       }
     },

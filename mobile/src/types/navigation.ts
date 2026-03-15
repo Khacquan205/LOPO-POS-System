@@ -97,7 +97,13 @@ export type MainStackParamList = {
     currentQty: number;
     returnScreen: "Sales" | "DraftOrderDetail";
   };
-  Products: { showDeleteSuccessToast?: boolean } | undefined;
+  Products:
+    | {
+        showDeleteSuccessToast?: boolean;
+        showCreateSuccessToast?: boolean;
+        showEditSuccessToast?: boolean;
+      }
+    | undefined;
   CreateProduct: undefined;
   ProductDetail: { productId: string; edited?: boolean };
   EditProduct: { productId: string };
@@ -121,6 +127,7 @@ export type MainStackParamList = {
   Support: undefined;
   Notifications: undefined;
   StoreSelector: undefined;
+  Profile: undefined;
 };
 
 // ── Root Stack ───────────────────────────────────────────────

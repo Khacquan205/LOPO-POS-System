@@ -16,6 +16,7 @@ interface CategoryChipProps {
   label: string;
   color: string;
   isSelected?: boolean;
+  isMuted?: boolean;
   onPress?: () => void;
   compact?: boolean;
 }
@@ -23,7 +24,7 @@ interface CategoryChipProps {
 interface CategoryChipsProps {
   categories: Category[];
   selectedId?: string;
-  onSelectCategory?: (id: string | undefined) => void;
+  onSelectCategory?: (id: string) => void;
   compact?: boolean;
 }
 
@@ -35,6 +36,7 @@ const CategoryChip: React.FC<CategoryChipProps> = ({
   label,
   color,
   isSelected = false,
+  isMuted = false,
   onPress,
   compact = false,
 }) => {
@@ -44,7 +46,7 @@ const CategoryChip: React.FC<CategoryChipProps> = ({
       style={[
         styles.categoryChip,
         compact ? styles.categoryChipCompact : styles.categoryChipDefault,
-        !isSelected && styles.categoryChipMuted,
+        isMuted && styles.categoryChipMuted,
         isSelected && styles.categoryChipSelected,
         { backgroundColor: color },
       ]}
@@ -66,6 +68,8 @@ export const CategoryChips: React.FC<CategoryChipsProps> = ({
   onSelectCategory,
   compact = false,
 }) => {
+  const isAllSelected = selectedId === "all";
+
   return (
     <ScrollView
       horizontal
@@ -73,20 +77,22 @@ export const CategoryChips: React.FC<CategoryChipsProps> = ({
       style={styles.categoryChipsContainer}
       contentContainerStyle={styles.categoryChipsContent}
     >
-      {categories.map((category) => (
-        <CategoryChip
-          key={category.id}
-          label={category.name}
-          color={category.color}
-          compact={compact}
-          isSelected={selectedId === category.id}
-          onPress={() =>
-            onSelectCategory?.(
-              selectedId === category.id ? undefined : category.id,
-            )
-          }
-        />
-      ))}
+      {categories.map((category) => {
+        const isSelected = selectedId === category.id;
+        const isMuted = isAllSelected ? false : !isSelected;
+
+        return (
+          <CategoryChip
+            key={category.id}
+            label={category.name}
+            color={category.color}
+            compact={compact}
+            isSelected={isSelected}
+            isMuted={isMuted}
+            onPress={() => onSelectCategory?.(category.id)}
+          />
+        );
+      })}
     </ScrollView>
   );
 };
@@ -105,6 +111,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     gap: spacing.xs,
     alignItems: "center",
+    marginBottom: spacing.md,
   },
   categoryChip: {
     justifyContent: "center",

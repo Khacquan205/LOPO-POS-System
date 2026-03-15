@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet,
+  View, Text, FlatList, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { Staff } from '../mock/staff.mock';
 import { useStaffStore } from '../store/staff.store';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'Staff'>;
@@ -15,12 +16,28 @@ type Props = MainStackScreenProps<'Staff'>;
 export const StaffScreen: React.FC<Props> = ({ navigation }) => {
   const [search, setSearch] = useState('');
   const staffList = useStaffStore((s) => s.staffList);
+  const isLoading = useStaffStore((s) => s.isLoading);
+  const errorMessage = useStaffStore((s) => s.errorMessage);
+  const fetchStaffList = useStaffStore((s) => s.fetchStaffList);
+  const clearError = useStaffStore((s) => s.clearError);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void fetchStaffList(accessToken);
+  }, [accessToken, fetchStaffList]);
 
   const filtered = staffList.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.phone.includes(search),
   );
+
+  const handleRefresh = (): void => {
+    if (!accessToken) return;
+    clearError();
+    void fetchStaffList(accessToken);
+  };
 
   const renderItem = ({ item }: { item: Staff }) => (
     <TouchableOpacity
@@ -74,6 +91,22 @@ export const StaffScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Staff List */}
+      {isLoading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.stateText}>Đang tải danh sách nhân viên...</Text>
+        </View>
+      ) : null}
+
+      {!isLoading && !!errorMessage ? (
+        <View style={styles.centerState}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh} activeOpacity={0.8}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
@@ -81,6 +114,15 @@ export const StaffScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}
+        onRefresh={handleRefresh}
+        refreshing={isLoading}
+        ListEmptyComponent={
+          !isLoading && !errorMessage ? (
+            <View style={styles.centerState}>
+              <Text style={styles.stateText}>Chưa có nhân viên trong cửa hàng</Text>
+            </View>
+          ) : null
+        }
       />
 
       {/* FAB */}
@@ -123,7 +165,37 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   listContent: {
+    flexGrow: 1,
     paddingBottom: 100,
+  },
+  centerState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  stateText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  retryBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  retryText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '600',
   },
   staffItem: {
     paddingHorizontal: spacing.md,

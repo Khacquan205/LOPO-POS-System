@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MainStackScreenProps } from "../../../types/navigation";
+import { DeleteConfirmModal } from "../../../ui/components";
 import { colors, spacing, typography, radius, shadow } from "../../../ui/theme";
 import { ApiError } from "../../../lib/api/client";
 import { useProductsStore } from "../store/products.store";
@@ -29,7 +30,7 @@ import { useAuthStore } from "../../../store/auth.store";
 import { useCategoriesStore } from "../store/categories.store";
 import { useInventoryStore } from "../store/inventory.store";
 
-const HERO_IMAGE_URI =
+const FALLBACK_HERO_IMAGE_URI =
   "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
 
 type Props = MainStackScreenProps<"ProductDetail">;
@@ -210,65 +211,6 @@ const ProductActionBottomSheet: React.FC<ProductActionBottomSheetProps> = ({
   );
 };
 
-interface DeleteConfirmModalProps {
-  visible: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}
-
-const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
-  visible,
-  onCancel,
-  onConfirm,
-}) => {
-  return (
-    <Modal
-      transparent
-      visible={visible}
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
-      <Pressable style={confirmStyles.overlay} onPress={onCancel}>
-        <Pressable
-          style={confirmStyles.dialog}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <View style={confirmStyles.iconOuterCircle}>
-            <View style={confirmStyles.iconInnerCircle}>
-              <Ionicons name="information" size={24} color={colors.white} />
-            </View>
-          </View>
-
-          <Text style={confirmStyles.title}>Xác nhận xóa sản phẩm!</Text>
-
-          <Text style={confirmStyles.message}>
-            Bạn có chắc muốn xóa sản phẩm này không?{"\n"}
-            Hành động này không thể hoàn tác.
-          </Text>
-
-          <View style={confirmStyles.actionsRow}>
-            <TouchableOpacity
-              style={confirmStyles.actionButton}
-              activeOpacity={0.8}
-              onPress={onCancel}
-            >
-              <Text style={confirmStyles.cancelText}>CANCEL</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[confirmStyles.actionButton, confirmStyles.okButton]}
-              activeOpacity={0.8}
-              onPress={onConfirm}
-            >
-              <Text style={confirmStyles.okText}>OK</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-};
-
 const sheetStyles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -322,94 +264,6 @@ const sheetStyles = StyleSheet.create({
   },
 });
 
-const confirmStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-  },
-  dialog: {
-    width: "100%",
-    maxWidth: 380,
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md + spacing.xs,
-    alignItems: "center",
-    ...shadow.md,
-  },
-  iconOuterCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.full,
-    backgroundColor: "#FDE7CC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  iconInnerCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    ...typography.body,
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.secondary,
-    textAlign: "center",
-    marginBottom: spacing.sm,
-  },
-  message: {
-    ...typography.bodySmall,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: spacing.lg,
-  },
-  actionsRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: spacing.xs,
-    gap: spacing.sm,
-  },
-  actionButton: {
-    minHeight: 44,
-    minWidth: 110,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-  },
-  okButton: {
-    backgroundColor: "#FDE7CC",
-  },
-  cancelText: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.textPrimary,
-    letterSpacing: 0.3,
-  },
-  okText: {
-    ...typography.body,
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.primary,
-    letterSpacing: 0.3,
-  },
-});
-
 export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const products = useProductsStore((state) => state.products);
   const fetchProductById = useProductsStore((state) => state.fetchProductById);
@@ -422,9 +276,9 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const fetchStockByProduct = useInventoryStore(
     (state) => state.fetchStockByProduct,
   );
-  const [toastVisible, setToastVisible] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [showDeleteSuccessToast, setShowDeleteSuccessToast] = useState(false);
   const [serverProduct, setServerProduct] = useState<
     (typeof products)[number] | null
   >(null);
@@ -513,24 +367,8 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     })();
   }, [reloadProductDetail]);
 
-  // Listen for navigation focus to show toast after editing
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (route.params?.edited) {
-        setToastVisible(true);
-        // Clear the flag
-        navigation.setParams({ edited: undefined });
-        // Auto hide after 3 seconds
-        setTimeout(() => {
-          setToastVisible(false);
-        }, 3000);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, route.params]);
-
   const displaySource = serverProduct ?? product;
+  const heroImageUri = displaySource?.image ?? FALLBACK_HERO_IMAGE_URI;
 
   const displayProduct = {
     name: displaySource?.name ?? "Bánh mì",
@@ -548,7 +386,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={styles.container}>
         <View style={styles.heroContainer}>
           <Image
-            source={{ uri: HERO_IMAGE_URI }}
+            source={{ uri: heroImageUri }}
             style={styles.heroImage}
             resizeMode="cover"
           />
@@ -565,12 +403,13 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.infoCard}>
           <TouchableOpacity
             style={styles.menuButton}
-            activeOpacity={1}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
             onPress={() => setShowActionMenu(true)}
           >
             <Ionicons
               name="ellipsis-vertical"
-              size={44}
+              size={22}
               color={colors.primary}
             />
           </TouchableOpacity>
@@ -613,9 +452,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Success Toast */}
-        <SuccessToast visible={toastVisible} message="Chỉnh sửa thành công!" />
-
         {/* Product Action Bottom Sheet */}
         <ProductActionBottomSheet
           visible={showActionMenu}
@@ -640,6 +476,8 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         <DeleteConfirmModal
           visible={isDeleteConfirmVisible}
+          title="Xác nhận xóa sản phẩm!"
+          message="Bạn có chắc muốn xóa sản phẩm này không?\nHành động này không thể hoàn tác"
           onCancel={() => setIsDeleteConfirmVisible(false)}
           onConfirm={async () => {
             if (!accessToken) return;
@@ -650,12 +488,10 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 route.params.productId,
                 categoryLookup,
               );
-              Alert.alert("Xóa thành công", "Sản phẩm đã được xóa.", [
-                {
-                  text: "OK",
-                  onPress: () => navigateToProducts(true),
-                },
-              ]);
+              setShowDeleteSuccessToast(true);
+              setTimeout(() => {
+                navigateToProducts(true);
+              }, 700);
             } catch (error) {
               Alert.alert(
                 "Xóa thất bại",
@@ -671,6 +507,11 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               );
             }
           }}
+        />
+
+        <SuccessToast
+          visible={showDeleteSuccessToast}
+          message="Xóa sản phẩm thành công!"
         />
       </View>
     </SafeAreaView>
@@ -721,12 +562,14 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     position: "absolute",
-    top: spacing.md - spacing.xs,
-    right: spacing.md - spacing.xs,
-    width: 52,
-    height: 52,
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 64,
+    height: 64,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 10,
+    elevation: 10,
   },
   title: {
     ...typography.screenTitle,
@@ -734,6 +577,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
     marginBottom: spacing.md,
+    paddingHorizontal: spacing.xxl,
   },
   actionButtonsContainer: {
     flexDirection: "row",

@@ -33,7 +33,7 @@ import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 import type { StockItem } from '../../../lib/stock';
 
-type Props = MainStackScreenProps<'Sales'>;
+type Props = MainStackScreenProps<"Sales">;
 
 export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -53,17 +53,19 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const isCancelling = usePosStore((s) => s.isCancelling);
   const posError = usePosStore((s) => s.error);
   const clearError = usePosStore((s) => s.clearError);
+  const loadDraftOrder = usePosStore((s) => s.loadDraftOrder);
   const addPickedItems = usePosStore((s) => s.addPickedItems);
   const incrementItem = usePosStore((s) => s.incrementItem);
   const decrementItem = usePosStore((s) => s.decrementItem);
   const setItemQty = usePosStore((s) => s.setItemQty);
   const cancelOrder = usePosStore((s) => s.cancel);
   const resetSession = usePosStore((s) => s.resetSession);
-  const loadDraftOrder = usePosStore((s) => s.loadDraftOrder);
   const startNewDraft = usePosStore((s) => s.startNewDraft);
   const validateDraftOrder = usePosStore((s) => s.validateDraftOrder);
 
-  const [customer, setCustomer] = React.useState<Customer | undefined>(undefined);
+  const [customer, setCustomer] = React.useState<Customer | undefined>(
+    undefined,
+  );
   const [showPicker, setShowPicker] = React.useState(false);
   const [isEditingDraft, setIsEditingDraft] = React.useState(false);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -169,28 +171,28 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const openProductPicker = useCallback(() => {
     // Use orderId if exists, otherwise pass a placeholder (draft will be created on first add)
-    navigation.navigate('ProductPicker', {
-      orderId: orderId ?? 'new',
-      returnScreen: 'Sales',
+    navigation.navigate("ProductPicker", {
+      orderId: orderId ?? "new",
+      returnScreen: "Sales",
     });
   }, [navigation, orderId]);
 
   const openBarcodeScanner = useCallback(() => {
-    navigation.navigate('ScanProduct', {
+    navigation.navigate("ScanProduct", {
       orderId: orderId ?? undefined,
-      returnScreen: 'Sales',
+      returnScreen: "Sales",
     });
   }, [navigation, orderId]);
 
   const openQuantityEditor = useCallback(
     (item: SalesOrderItem) => {
-      navigation.navigate('QuantityEditor', {
-        orderId: orderId ?? 'new',
+      navigation.navigate("QuantityEditor", {
+        orderId: orderId ?? "new",
         itemId: item.itemId,
         productName: item.productName,
         unitPrice: item.unitPrice,
         currentQty: item.quantity,
-        returnScreen: 'Sales',
+        returnScreen: "Sales",
       });
     },
     [navigation, orderId],
@@ -259,7 +261,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (!orderId || !orderCode || posItems.length === 0) return;
-    navigation.navigate('Payment', {
+    navigation.navigate("Payment", {
       orderCode,
       orderId,
       total: grandTotal,
@@ -477,7 +479,11 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       )}
 
       {/* Customer bar */}
-      <CustomerBar customer={customer} isEditable onPress={() => setShowPicker(true)} />
+      <CustomerBar
+        customer={customer}
+        isEditable
+        onPress={() => setShowPicker(true)}
+      />
 
       {/* Total footer / CTA */}
       <TotalFooter
@@ -491,7 +497,10 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       <CustomerPickerBottomSheet
         visible={showPicker}
         onClose={() => setShowPicker(false)}
-        onSelect={(c) => { setCustomer(c); setShowPicker(false); }}
+        onSelect={(c) => {
+          setCustomer(c);
+          setShowPicker(false);
+        }}
       />
 
       <Modal
@@ -531,17 +540,17 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>TÙY CHỌN</Text>
-            <TouchableOpacity style={[styles.menuItem, styles.menuItemDanger]} onPress={handleMenuDelete}>
-              <Text style={[styles.menuText, styles.menuTextDanger]}>Xóa đơn</Text>
-            </TouchableOpacity>
             {!isEditingDraft && (
               <>
-                <View style={styles.menuDivider} />
                 <TouchableOpacity style={styles.menuItem} onPress={handleMenuNewOrder}>
                   <Text style={styles.menuText}>Tạo đơn mới</Text>
                 </TouchableOpacity>
+                <View style={styles.menuDividerStrong} />
               </>
             )}
+            <TouchableOpacity style={[styles.menuItem, styles.menuItemDanger]} onPress={handleMenuDelete}>
+              <Text style={[styles.menuText, styles.menuTextDanger]}>Xóa đơn</Text>
+            </TouchableOpacity>
           </Animated.View>
         </View>
       </Modal>
@@ -623,6 +632,11 @@ const styles = StyleSheet.create({
   menuDivider: {
     height: spacing.sm,
   },
+  menuDividerStrong: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: spacing.sm,
+  },
   menuText: {
     fontSize: 14,
     fontWeight: '600',
@@ -633,9 +647,9 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
   syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.xs,
     backgroundColor: colors.surfaceSecondary,
     gap: spacing.xs,
@@ -669,13 +683,13 @@ const styles = StyleSheet.create({
   },
   empty: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 14,
     color: colors.textSecondary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   list: {
     flex: 1,

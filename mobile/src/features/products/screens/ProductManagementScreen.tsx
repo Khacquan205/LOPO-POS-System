@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   FlatList,
@@ -19,7 +19,7 @@ import { ProductItem } from "../components/ProductItem";
 import { FloatingActionButton } from "../components/FloatingActionButton";
 import { FilterBottomSheet } from "../components/FilterBottomSheet";
 import { BulkActionBar } from "../components/BulkActionBar";
-import { SuccessToast } from "../../../ui/components";
+import { SuccessToast, DeleteConfirmModal } from "../../../ui/components";
 import { colors, spacing, radius, typography } from "../../../ui/theme";
 import { useProductsStore } from "../store/products.store";
 import { useAuthStore } from "../../../store/auth.store";
@@ -65,14 +65,19 @@ export const ProductManagementScreen: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [filterVisible, setFilterVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">(
+    "all",
+  );
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [categoryManagerVisible, setCategoryManagerVisible] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
 
   const loadProductsAndCategories = useCallback(async () => {
     if (!accessToken) return;
@@ -90,27 +95,33 @@ export const ProductManagementScreen: React.FC<Props> = ({
 
   useFocusEffect(
     useCallback(() => {
-      if (accessToken) {
-        void (async () => {
-          try {
-            await loadProductsAndCategories();
-          } catch (error) {
-            console.warn("Load products/categories failed:", error);
-          }
-        })();
-      }
-
-      if (route.params?.showDeleteSuccessToast) {
-        setToastVisible(true);
-        navigation.setParams({ showDeleteSuccessToast: undefined });
-      }
-    }, [
-      accessToken,
-      loadProductsAndCategories,
-      route.params?.showDeleteSuccessToast,
-      navigation,
-    ]),
+      if (!accessToken) return;
+      void (async () => {
+        try {
+          await loadProductsAndCategories();
+        } catch (error) {
+          console.warn("Load products/categories failed:", error);
+        }
+      })();
+    }, [accessToken, loadProductsAndCategories]),
   );
+
+  // Hiển thị toast ngay khi params thay đổi (kể cả khi đã đang ở màn hình này)
+  useEffect(() => {
+    const params = route.params as
+      | {
+          showDeleteSuccessToast?: boolean;
+          showCreateSuccessToast?: boolean;
+          showEditSuccessToast?: boolean;
+        }
+      | undefined;
+
+    if (params?.showDeleteSuccessToast) {
+      setToastMessage("Xóa sản phẩm thành công!");
+      setToastVisible(true);
+      navigation.setParams({ showDeleteSuccessToast: undefined });
+    }
+  }, [navigation, route.params?.showDeleteSuccessToast]);
 
   const categoryOptions = useMemo<CategoryOption[]>(
     () => [
@@ -138,15 +149,19 @@ export const ProductManagementScreen: React.FC<Props> = ({
       filtered = filtered.filter((p) => p.categoryId === selectedCategoryId);
     }
 
-    return filtered;
-  }, [searchQuery, selectedCategoryId, products, categoryOptions]);
-
-  const handleBackPress = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
+    // Filter by status (Đang hoạt động / Ngưng hoạt động)
+    if (statusFilter === "active") {
+      filtered = filtered.filter((p) => p.status === "active");
+    } else if (statusFilter === "inactive") {
+      filtered = filtered.filter((p) => p.status === "inactive");
     }
 
+    return filtered;
+  }, [searchQuery, selectedCategoryId, statusFilter, products, categoryOptions]);
+
+  const handleBackPress = () => {
+    // Luôn quay về màn hình Home trong MainTabs,
+    // tránh quay lại Edit/Detail sau khi đã lưu sản phẩm.
     navigation.navigate("MainTabs", { screen: "Home" });
   };
 
@@ -155,6 +170,16 @@ export const ProductManagementScreen: React.FC<Props> = ({
   };
 
   const handleCloseFilter = () => {
+    setFilterVisible(false);
+  };
+
+  const handleSelectFilterOption = (option: "active" | "inactive") => {
+    setStatusFilter(option);
+    setFilterVisible(false);
+  };
+
+  const handleClearStatusFilter = () => {
+    setStatusFilter("all");
     setFilterVisible(false);
   };
 
@@ -235,35 +260,29 @@ export const ProductManagementScreen: React.FC<Props> = ({
     }
   };
 
+  const confirmDeleteCategory = async () => {
+    if (!accessToken || !deleteCategoryId) return;
+
+    try {
+      await deleteCategory(accessToken, deleteCategoryId);
+      await loadProductsAndCategories();
+      if (selectedCategoryId === deleteCategoryId) {
+        setSelectedCategoryId("all");
+      }
+      if (editingCategoryId === deleteCategoryId) {
+        resetCategoryForm();
+      }
+    } catch (error) {
+      console.warn("Delete category failed:", error);
+      Alert.alert("Không thể xóa loại sản phẩm", "Vui lòng thử lại.");
+    } finally {
+      setDeleteCategoryId(null);
+    }
+  };
+
   const handleDeleteCategory = (categoryId: string) => {
     if (!accessToken) return;
-
-    Alert.alert(
-      "Xóa loại sản phẩm",
-      "Bạn có chắc muốn xóa loại sản phẩm này?",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteCategory(accessToken, categoryId);
-              await loadProductsAndCategories();
-              if (selectedCategoryId === categoryId) {
-                setSelectedCategoryId("all");
-              }
-              if (editingCategoryId === categoryId) {
-                resetCategoryForm();
-              }
-            } catch (error) {
-              console.warn("Delete category failed:", error);
-              Alert.alert("Không thể xóa loại sản phẩm", "Vui lòng thử lại.");
-            }
-          },
-        },
-      ],
-    );
+    setDeleteCategoryId(categoryId);
   };
 
   const handleStartEditCategory = (
@@ -356,12 +375,20 @@ export const ProductManagementScreen: React.FC<Props> = ({
       {/* Success Toast */}
       <SuccessToast
         visible={toastVisible}
-        message="Xóa sản phẩm thành công!"
-        onHide={() => setToastVisible(false)}
+        message={toastMessage ?? ""}
+        onHide={() => {
+          setToastVisible(false);
+          setToastMessage(null);
+        }}
       />
 
       {/* Filter Bottom Sheet */}
-      <FilterBottomSheet visible={filterVisible} onClose={handleCloseFilter} />
+      <FilterBottomSheet
+        visible={filterVisible}
+        onClose={handleCloseFilter}
+        onSelectOption={handleSelectFilterOption}
+        onClearAll={handleClearStatusFilter}
+      />
 
       <Modal
         transparent
@@ -449,6 +476,14 @@ export const ProductManagementScreen: React.FC<Props> = ({
           </View>
         </View>
       </Modal>
+
+      <DeleteConfirmModal
+        visible={!!deleteCategoryId}
+        title="Xác nhận xóa loại sản phẩm!"
+        message="Bạn có chắc muốn xóa loại sản phẩm này không?\nHành động này không thể hoàn tác"
+        onCancel={() => setDeleteCategoryId(null)}
+        onConfirm={confirmDeleteCategory}
+      />
     </SafeAreaView>
   );
 };

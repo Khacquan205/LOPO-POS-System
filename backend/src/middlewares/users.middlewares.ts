@@ -78,6 +78,37 @@ export const registerStaffValidator = validate(
   )
 )
 
+export const storeIdParamValidator = validate(
+  checkSchema(
+    {
+      store_id: {
+        in: ['params'],
+        notEmpty: { errorMessage: 'store_id là bắt buộc' },
+        isMongoId: { errorMessage: 'store_id không hợp lệ' }
+      }
+    },
+    ['params']
+  )
+)
+
+export const updateStoreNameValidator = validate(
+  checkSchema(
+    {
+      name: {
+        in: ['body'],
+        notEmpty: { errorMessage: USERS_MESSAGES.STORE_NAME_IS_REQUIRED },
+        isString: { errorMessage: USERS_MESSAGES.STORE_NAME_MUST_BE_STRING },
+        isLength: {
+          options: { max: 100 },
+          errorMessage: 'Tên cửa hàng không được vượt quá 100 ký tự'
+        },
+        trim: true
+      }
+    },
+    ['body']
+  )
+)
+
 export const loginValidator = validate(
   checkSchema(
     {

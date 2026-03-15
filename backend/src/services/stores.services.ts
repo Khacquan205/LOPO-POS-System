@@ -349,6 +349,7 @@ class StoresService {
       return {
         store_id: storeId,
         name: store.name,
+        store_qr_code: String(store.qr_code ?? storeId),
         role: membership?.role ?? null,
         joined_at: membership?.joined_at ?? null,
         is_active: String(store._id) === activeStoreId

@@ -42,14 +42,23 @@ const METHODS: {
 
 const formatAmount = (amount: number) => formatCurrencyVND(amount);
 const buildOrderItemKey = (orderKey: string, productId: string) => `${orderKey}:${productId}`;
-const buildTransactionCode = (seed: string) => {
+const buildTransactionCode = (seed?: string) => {
   const base = seed?.trim() ? seed : 'ORDER';
   const suffix = String(Date.now()).slice(-6);
   return `${base}-${suffix}`;
 };
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { orderCode, orderId, total, status, createdAt, staffName, items, customer } = route.params;
+  const {
+    orderCode,
+    orderId,
+    total,
+    status,
+    createdAt,
+    staffName,
+    items,
+    customer,
+  } = route.params;
   const insets = useSafeAreaInsets();
 
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -68,7 +77,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [isCheckingOutDirect, setIsCheckingOutDirect] = useState(false);
-  const [transactionCode, setTransactionCode] = useState(() => buildTransactionCode(orderCode));
+  const [transactionCode, setTransactionCode] = useState<string>(() => buildTransactionCode(orderCode));
   const { alertProps, showAlert } = useCommonAlert();
 
   const isBusy = isCheckingOut || isCheckingOutDirect;
@@ -148,14 +157,10 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const displayStaff = staffName ?? staffFromAuth ?? 'Nhân viên';
 
   useEffect(() => {
-    if (method === 'transfer' && !transactionCode) {
+    if (method === 'transfer') {
       setTransactionCode(buildTransactionCode(orderCode));
     }
-  }, [method, orderCode, transactionCode]);
-
-  const handleRefreshQr = useCallback(() => {
-    setTransactionCode(buildTransactionCode(orderCode));
-  }, [orderCode]);
+  }, [method, orderCode]);
 
   const handleSuccessOk = useCallback(() => {
     const posOrderId = usePosStore.getState().orderId;
@@ -212,7 +217,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (orderId === posOrderId) {
-      // Current POS session → use posStore (handles its own loading state)
+      // Current POS session -> use posStore (handles its own loading state)
       const ok = await checkout(accessToken, {
         payment_method: method,
         payment_status: 'paid',
@@ -273,10 +278,12 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + 120 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Order info ── */}
         <View style={styles.orderInfo}>
           <View style={styles.orderInfoTop}>
             <Text style={styles.orderCode}>{orderCode}</Text>
@@ -284,12 +291,15 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
           <Text style={styles.orderMeta}>{createdAtText}</Text>
           <View style={styles.staffRow}>
-            <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+            <Ionicons
+              name="person-outline"
+              size={14}
+              color={colors.textSecondary}
+            />
             <Text style={styles.staffText}> {displayStaff}</Text>
           </View>
         </View>
 
-        {/* ── Products ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sản phẩm ({totalItems} món)</Text>
           {summaryItems.length === 0 ? (
@@ -301,14 +311,17 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={styles.productRow}
               >
                 <Text style={styles.productQty}>{item.quantity}x</Text>
-                <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
-                <Text style={styles.productPrice}>{formatAmount(item.unitPrice * item.quantity)}</Text>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {item.productName}
+                </Text>
+                <Text style={styles.productPrice}>
+                  {formatAmount(item.unitPrice * item.quantity)}
+                </Text>
               </View>
             ))
           )}
         </View>
 
-        {/* ── Totals ── */}
         <View style={styles.totalsSection}>
           <SummaryInfoRow label="Tạm tính" value={formatAmount(subtotal)} />
           <SummaryInfoRow
@@ -320,13 +333,11 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         </View>
 
-        {/* ── Customer ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Khách hàng</Text>
           <CustomerBar customer={customer} isEditable={false} />
         </View>
 
-        {/* ── Payment method selector ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
           <View style={styles.methodRow}>
@@ -343,7 +354,9 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Ionicons
                   name={m.icon}
                   size={28}
-                  color={method === m.id ? colors.primary : colors.textSecondary}
+                  color={
+                    method === m.id ? colors.primary : colors.textSecondary
+                  }
                 />
                 <Text
                   style={[
@@ -360,15 +373,17 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {method === 'transfer' && (
           <TransferQrCard
-            transactionCode={transactionCode}
-            onConfirm={handleConfirm}
-            onRefresh={handleRefreshQr}
+            qrValue={transactionCode}
+            accountName="LOPO POS"
+            accountNumber="0123 456 789"
+            bankName="Demo Bank"
           />
         )}
       </ScrollView>
 
-      {/* ── Confirm CTA ── */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}
+      >
         <TouchableOpacity
           style={[styles.ctaBtn, (isBusy || hasInvalidItems) && styles.ctaBtnDisabled]}
           onPress={isBusy || hasInvalidItems ? undefined : handleConfirm}
@@ -377,7 +392,9 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           {isBusy ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.ctaText}>Xác nhận {formatAmount(displayTotal)}</Text>
+            <Text style={styles.ctaText}>
+              Xác nhận {formatAmount(displayTotal)}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -395,7 +412,6 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing.xl,
   },
-  /* Order info */
   orderInfo: {
     backgroundColor: colors.background,
     paddingHorizontal: spacing.md,
@@ -403,13 +419,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   orderInfoTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   orderCode: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.textPrimary,
   },
   orderMeta: {
@@ -418,15 +434,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: spacing.xs,
   },
   staffText: {
     fontSize: 12,
     color: colors.textSecondary,
   },
-  /* Section */
   section: {
     backgroundColor: colors.background,
     marginTop: spacing.sm,
@@ -435,9 +450,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
@@ -449,8 +464,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
@@ -458,7 +473,7 @@ const styles = StyleSheet.create({
     width: 30,
     fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   productName: {
     flex: 1,
@@ -468,7 +483,7 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
   },
   totalsSection: {
@@ -477,14 +492,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   methodRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: spacing.md,
     gap: spacing.sm,
     paddingBottom: spacing.sm,
   },
   methodCard: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.sm + 6,
     borderRadius: 10,
     borderWidth: 1,
@@ -494,18 +509,17 @@ const styles = StyleSheet.create({
   },
   methodCardActive: {
     borderColor: colors.primary,
-    backgroundColor: '#EBF2FF',
+    backgroundColor: "#EBF2FF",
   },
   methodLabel: {
     fontSize: 13,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   methodLabelActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
-  /* Footer */
   footer: {
     backgroundColor: colors.background,
     borderTopWidth: 1,
@@ -517,14 +531,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: spacing.md + 2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   ctaBtnDisabled: {
     backgroundColor: colors.textDisabled,
   },
   ctaText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
 });

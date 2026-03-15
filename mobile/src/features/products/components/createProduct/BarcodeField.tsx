@@ -42,7 +42,11 @@ export const BarcodeField: React.FC<BarcodeFieldProps> = ({
           keyboardType="numeric"
         />
         <TouchableOpacity onPress={onScanPress} style={styles.scanButton}>
-          <Ionicons name="qr-code" size={20} color={colors.textSecondary} />
+          <Ionicons
+            name="scan-outline"
+            size={22}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
       </View>
     </View>
