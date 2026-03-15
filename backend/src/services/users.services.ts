@@ -125,6 +125,17 @@ class UsersService {
     return Promise.all([this.signAccessToken(user_id, role), this.signRefreshToken(user_id, role)])
   }
 
+  private async getOwnerOrThrow(owner_user_id: string) {
+    const owner = await User.findById(owner_user_id)
+    if (!owner || owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    return owner
+  }
+
   async checkPhoneNumberExists(phone_number: string) {
     const user = await User.findOne({ phone_number })
     return Boolean(user)
@@ -392,6 +403,85 @@ class UsersService {
       createdAt: staff.createdAt,
       updatedAt: staff.updatedAt
     }
+  }
+
+  async updateStoreName(owner_user_id: string, store_id: string, name: string) {
+    const owner = await this.getOwnerOrThrow(owner_user_id)
+    const store = await Store.findOne({ _id: new Types.ObjectId(store_id), owner_id: owner._id })
+    if (!store) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.STORE_NOT_FOUND,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    store.name = name
+    await store.save()
+
+    return {
+      store_id: String((store as any).store_id ?? store._id),
+      name: store.name,
+      owner_id: String(store.owner_id),
+      created_at: store.createdAt,
+      updated_at: store.updatedAt
+    }
+  }
+
+  async deleteStore(owner_user_id: string, store_id: string) {
+    const owner = await this.getOwnerOrThrow(owner_user_id)
+    const store = await Store.findOne({ _id: new Types.ObjectId(store_id), owner_id: owner._id })
+    if (!store) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.STORE_NOT_FOUND,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    await Store.deleteOne({ _id: store._id })
+
+    await User.updateMany(
+      { store_id: store._id, _id: { $ne: owner._id } },
+      { $set: { store_id: null, status: UserStatus.Inactive } }
+    )
+
+    let newActiveStoreId: string | null = null
+    if (owner.store_id && owner.store_id.equals(store._id)) {
+      const nextStore = await Store.findOne({ owner_id: owner._id }).sort({ createdAt: -1 })
+      owner.store_id = nextStore ? nextStore._id : null
+      await owner.save()
+      newActiveStoreId = nextStore ? String((nextStore as any).store_id ?? nextStore._id) : null
+    }
+
+    const payload: { deleted_store_id: string; new_active_store_id?: string | null } = {
+      deleted_store_id: String((store as any).store_id ?? store._id)
+    }
+    if (newActiveStoreId !== null) {
+      payload.new_active_store_id = newActiveStoreId
+    }
+    return payload
+  }
+
+  async deleteAllStores(owner_user_id: string) {
+    const owner = await this.getOwnerOrThrow(owner_user_id)
+    const stores = await Store.find({ owner_id: owner._id }).select('_id')
+    const storeIds = stores.map((store) => store._id)
+
+    if (storeIds.length === 0) {
+      owner.store_id = null
+      await owner.save()
+      return { deleted_count: 0 }
+    }
+
+    await Store.deleteMany({ _id: { $in: storeIds } })
+    await User.updateMany(
+      { store_id: { $in: storeIds }, _id: { $ne: owner._id } },
+      { $set: { store_id: null, status: UserStatus.Inactive } }
+    )
+
+    owner.store_id = null
+    await owner.save()
+
+    return { deleted_count: storeIds.length }
   }
 }
 

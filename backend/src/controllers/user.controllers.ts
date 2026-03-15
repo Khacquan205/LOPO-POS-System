@@ -81,3 +81,33 @@ export const updateStaffStatusController = async (req: Request, res: Response) =
     result
   })
 }
+
+export const updateStoreNameController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const store_id = String(req.params.store_id || '')
+  const { name } = req.body
+  const result = await usersService.updateStoreName(owner_user_id, store_id, name)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.UPDATE_STORE_SUCCESS,
+    result
+  })
+}
+
+export const deleteStoreController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const store_id = String(req.params.store_id || '')
+  const result = await usersService.deleteStore(owner_user_id, store_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.DELETE_STORE_SUCCESS,
+    result
+  })
+}
+
+export const deleteAllStoresController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const result = await usersService.deleteAllStores(owner_user_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.DELETE_ALL_STORES_SUCCESS,
+    result
+  })
+}
