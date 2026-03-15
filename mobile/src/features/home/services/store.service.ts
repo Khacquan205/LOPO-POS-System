@@ -5,6 +5,7 @@ import { apiRequest } from "../../../lib/api/client";
 export interface StoreItem {
   store_id: string;
   name: string;
+  store_qr_code?: string;
   role: "owner" | "staff" | null;
   joined_at: string | null;
   is_active: boolean;
@@ -21,6 +22,16 @@ interface SelectStoreResponse {
     store_id: string;
     name: string;
     role: string;
+  };
+}
+
+interface CreateStoreResponse {
+  message: string;
+  result: {
+    store_id: string;
+    name: string;
+    store_qr_code?: string;
+    role: "owner" | "staff" | null;
   };
 }
 
@@ -42,6 +53,18 @@ export async function selectStore(
     method: "POST",
     token,
     body: JSON.stringify({ store_id: storeId }),
+  });
+  return data.result;
+}
+
+export async function createStore(
+  token: string,
+  name: string,
+): Promise<CreateStoreResponse["result"]> {
+  const data = await apiRequest<CreateStoreResponse>("/stores", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ name }),
   });
   return data.result;
 }
