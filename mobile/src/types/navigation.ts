@@ -127,6 +127,7 @@ export type MainStackParamList = {
   Support: undefined;
   Notifications: undefined;
   StoreSelector: undefined;
+  Profile: undefined;
 };
 
 // ── Root Stack ───────────────────────────────────────────────

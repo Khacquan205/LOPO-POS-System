@@ -26,6 +26,7 @@ import { SettingsScreen } from "../../features/settings/screens/SettingsScreen";
 import { SupportScreen } from "../../features/support/screens/SupportScreen";
 import { NotificationsScreen } from "../../features/notifications/screens/NotificationsScreen";
 import { StoreSelectorScreen } from "../../features/home/screens/StoreSelectorScreen";
+import { ProfileScreen } from "../../features/home/screens/ProfileScreen";
 import { CreateProductScreen } from "../../features/products/screens/CreateProductScreen";
 import { ProductDetailScreen } from "../../features/products/screens/ProductDetailScreen";
 import { EditProductScreen } from "../../features/products/screens/EditProductScreen";
@@ -79,6 +80,7 @@ export const MainStack: React.FC = () => {
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="StoreSelector" component={StoreSelectorScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
 };
