@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "../../../ui/theme";
 import { formatPrice } from "../../../lib/format";
@@ -69,11 +69,19 @@ export const ProductItem: React.FC<ProductItemProps> = ({
 
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Ionicons
-            name="cube-outline"
-            size={32}
-            color={colors.textSecondary}
-          />
+          {product.image ? (
+            <Image
+              source={{ uri: product.image }}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons
+              name="cube-outline"
+              size={32}
+              color={colors.textSecondary}
+            />
+          )}
         </View>
 
         {/* Product Info */}
@@ -133,6 +141,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
+  },
+  productImage: {
+    width: "100%",
+    height: "100%",
   },
   productInfo: {
     flex: 1,

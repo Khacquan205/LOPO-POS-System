@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Alert, ScrollView, StyleSheet } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
@@ -14,9 +15,7 @@ import { useAuthStore } from "../../../store/auth.store";
 import { useCategoriesStore } from "../store/categories.store";
 import { useInventoryStore } from "../store/inventory.store";
 import type { MainStackScreenProps } from "../../../types/navigation";
-
-const HERO_IMAGE_URI =
-  "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
+import { uploadImageToCloudinary } from "../../../lib/cloudinary";
 
 type Props = MainStackScreenProps<"EditProduct">;
 
@@ -62,6 +61,10 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const hasHydratedFormRef = useRef(false);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(
+    editingProduct?.image,
+  );
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const categoryLookup = useMemo(
     () =>
@@ -169,6 +172,46 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
     setShowAddCategory(false);
   };
 
+  const handleSelectImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Không có quyền truy cập ảnh",
+          "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh sản phẩm.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const localUri = result.assets[0]?.uri;
+      if (!localUri) return;
+
+      setImageUrl(localUri);
+      setIsUploadingImage(true);
+
+      const uploadedUrl = await uploadImageToCloudinary(localUri);
+      setImageUrl(uploadedUrl);
+      setIsUploadingImage(false);
+    } catch (error) {
+      console.warn("Upload image failed:", error);
+      setIsUploadingImage(false);
+      Alert.alert(
+        "Không thể upload ảnh",
+        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
+      );
+    }
+  };
+
   const handleSave = async () => {
     if (!accessToken) return;
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
@@ -209,6 +252,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           price: normalizedPrice,
           category_id: selectedCategoryId,
           barcode: barcode.trim() || undefined,
+          image_url: imageUrl,
           track_inventory: manageInventory,
           on_hand: manageInventory ? normalizedOnHand : 0,
         },
@@ -233,9 +277,9 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         <ImagePickerHeader
-          imageUri={HERO_IMAGE_URI}
+          imageUri={imageUrl}
           onBackPress={() => navigation.goBack()}
-          onSelectImagePress={() => console.log("Select image pressed")}
+          onSelectImagePress={handleSelectImage}
         />
 
         <ProductForm

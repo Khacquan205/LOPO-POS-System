@@ -29,7 +29,7 @@ import { useAuthStore } from "../../../store/auth.store";
 import { useCategoriesStore } from "../store/categories.store";
 import { useInventoryStore } from "../store/inventory.store";
 
-const HERO_IMAGE_URI =
+const FALLBACK_HERO_IMAGE_URI =
   "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
 
 type Props = MainStackScreenProps<"ProductDetail">;
@@ -531,6 +531,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [navigation, route.params]);
 
   const displaySource = serverProduct ?? product;
+  const heroImageUri = displaySource?.image ?? FALLBACK_HERO_IMAGE_URI;
 
   const displayProduct = {
     name: displaySource?.name ?? "Bánh mì",
@@ -548,7 +549,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={styles.container}>
         <View style={styles.heroContainer}>
           <Image
-            source={{ uri: HERO_IMAGE_URI }}
+            source={{ uri: heroImageUri }}
             style={styles.heroImage}
             resizeMode="cover"
           />

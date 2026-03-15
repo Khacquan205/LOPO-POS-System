@@ -105,6 +105,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     gap: spacing.xs,
     alignItems: "center",
+    marginBottom: spacing.md,
   },
   categoryChip: {
     justifyContent: "center",

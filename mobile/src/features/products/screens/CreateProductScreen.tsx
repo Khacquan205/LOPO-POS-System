@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Alert, ScrollView, StyleSheet } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
@@ -15,6 +16,7 @@ import { useProductsStore } from "../store/products.store";
 import { useAuthStore } from "../../../store/auth.store";
 import { useCategoriesStore } from "../store/categories.store";
 import { ApiError } from "../../../lib/api/client";
+import { uploadImageToCloudinary } from "../../../lib/cloudinary";
 
 // ============================================================================
 // MAIN SCREEN COMPONENT
@@ -40,6 +42,8 @@ export const CreateProductScreen: React.FC = () => {
   const [inventory, setInventory] = useState("");
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -60,8 +64,45 @@ export const CreateProductScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleSelectImage = () => {
-    console.log("Select image pressed");
+  const handleSelectImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Không có quyền truy cập ảnh",
+          "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh sản phẩm.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const localUri = result.assets[0]?.uri;
+      if (!localUri) return;
+
+      // Hiển thị trước ảnh local trong khi upload
+      setImageUrl(localUri);
+      setIsUploadingImage(true);
+
+      const uploadedUrl = await uploadImageToCloudinary(localUri);
+      setImageUrl(uploadedUrl);
+      setIsUploadingImage(false);
+    } catch (error) {
+      console.warn("Upload image failed:", error);
+      setIsUploadingImage(false);
+      Alert.alert(
+        "Không thể upload ảnh",
+        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
+      );
+    }
   };
 
   const handleSelectCategory = () => {
@@ -148,7 +189,7 @@ export const CreateProductScreen: React.FC = () => {
           price: normalizedPrice,
           category_id: selectedCategoryId,
           barcode: barcode.trim() || undefined,
-          image_url: undefined,
+          image_url: imageUrl,
           track_inventory: manageInventory,
           on_hand: manageInventory ? normalizedOnHand : 0,
           is_active: true,
@@ -181,6 +222,7 @@ export const CreateProductScreen: React.FC = () => {
         <ImagePickerHeader
           onBackPress={handleBackPress}
           onSelectImagePress={handleSelectImage}
+          imageUri={imageUrl}
         />
 
         <ProductForm
