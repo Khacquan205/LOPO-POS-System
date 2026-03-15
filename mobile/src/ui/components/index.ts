@@ -9,3 +9,4 @@ export { GridButton } from "./GridButton";
 export { ScreenHeader } from "./ScreenHeader";
 export { SuccessToast } from "./SuccessToast";
 export { ToastProvider, useToast } from "./ToastContext";
+export { DeleteConfirmModal } from "./DeleteConfirmModal";

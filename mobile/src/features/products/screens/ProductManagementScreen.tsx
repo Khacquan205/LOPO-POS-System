@@ -19,7 +19,7 @@ import { ProductItem } from "../components/ProductItem";
 import { FloatingActionButton } from "../components/FloatingActionButton";
 import { FilterBottomSheet } from "../components/FilterBottomSheet";
 import { BulkActionBar } from "../components/BulkActionBar";
-import { SuccessToast } from "../../../ui/components";
+import { SuccessToast, DeleteConfirmModal } from "../../../ui/components";
 import { colors, spacing, radius, typography } from "../../../ui/theme";
 import { useProductsStore } from "../store/products.store";
 import { useAuthStore } from "../../../store/auth.store";
@@ -77,6 +77,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
 
   const loadProductsAndCategories = useCallback(async () => {
     if (!accessToken) return;
@@ -259,35 +260,29 @@ export const ProductManagementScreen: React.FC<Props> = ({
     }
   };
 
+  const confirmDeleteCategory = async () => {
+    if (!accessToken || !deleteCategoryId) return;
+
+    try {
+      await deleteCategory(accessToken, deleteCategoryId);
+      await loadProductsAndCategories();
+      if (selectedCategoryId === deleteCategoryId) {
+        setSelectedCategoryId("all");
+      }
+      if (editingCategoryId === deleteCategoryId) {
+        resetCategoryForm();
+      }
+    } catch (error) {
+      console.warn("Delete category failed:", error);
+      Alert.alert("Không thể xóa loại sản phẩm", "Vui lòng thử lại.");
+    } finally {
+      setDeleteCategoryId(null);
+    }
+  };
+
   const handleDeleteCategory = (categoryId: string) => {
     if (!accessToken) return;
-
-    Alert.alert(
-      "Xóa loại sản phẩm",
-      "Bạn có chắc muốn xóa loại sản phẩm này?",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteCategory(accessToken, categoryId);
-              await loadProductsAndCategories();
-              if (selectedCategoryId === categoryId) {
-                setSelectedCategoryId("all");
-              }
-              if (editingCategoryId === categoryId) {
-                resetCategoryForm();
-              }
-            } catch (error) {
-              console.warn("Delete category failed:", error);
-              Alert.alert("Không thể xóa loại sản phẩm", "Vui lòng thử lại.");
-            }
-          },
-        },
-      ],
-    );
+    setDeleteCategoryId(categoryId);
   };
 
   const handleStartEditCategory = (
@@ -481,6 +476,14 @@ export const ProductManagementScreen: React.FC<Props> = ({
           </View>
         </View>
       </Modal>
+
+      <DeleteConfirmModal
+        visible={!!deleteCategoryId}
+        title="Xác nhận xóa loại sản phẩm!"
+        message="Bạn có chắc muốn xóa loại sản phẩm này không?\nHành động này không thể hoàn tác"
+        onCancel={() => setDeleteCategoryId(null)}
+        onConfirm={confirmDeleteCategory}
+      />
     </SafeAreaView>
   );
 };
