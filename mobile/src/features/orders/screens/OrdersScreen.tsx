@@ -62,7 +62,7 @@ export const OrdersScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleOrderPress = (order: ApiOrder): void => {
     if (order.status === 'draft') {
-      navigation.navigate('DraftOrderDetail', { orderId: order.order_id });
+      navigation.navigate('Sales', { draftOrderId: order.order_id, source: 'orders' });
     } else {
       navigation.navigate('OrderBillReadOnly', { orderId: order.order_id });
     }

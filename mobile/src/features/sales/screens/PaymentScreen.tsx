@@ -1,26 +1,31 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { CustomerBar, OrderStatusChip, SummaryInfoRow } from '../../orders/components';
 import { formatCurrencyVND, formatDateTime, type OrderStatusApi } from '../../orders/types/order.types';
-import {
-  PaymentSuccessModal,
-} from '../components';
+import { TransferQrCard } from '../components';
 import { usePosStore } from '../store/pos.store';
 import { checkoutOrder } from '../services/orders.service';
 import { useAuthStore } from '../../../store/auth.store';
+import { useProductsStore } from '../../products/store/products.store';
+import { useInventoryStore } from '../../products/store/inventory.store';
+import { useCategoriesStore } from '../../products/store/categories.store';
+import { useFocusEffect } from '@react-navigation/native';
 import type { MainStackScreenProps } from '../../../types/navigation';
+import type { StockItem } from '../../../lib/stock';
+import { useOrdersStore } from '../../orders/store/orders.store';
 
 type Props = MainStackScreenProps<'Payment'>;
 
@@ -36,6 +41,12 @@ const METHODS: {
 ];
 
 const formatAmount = (amount: number) => formatCurrencyVND(amount);
+const buildOrderItemKey = (orderKey: string, productId: string) => `${orderKey}:${productId}`;
+const buildTransactionCode = (seed: string) => {
+  const base = seed?.trim() ? seed : 'ORDER';
+  const suffix = String(Date.now()).slice(-6);
+  return `${base}-${suffix}`;
+};
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderCode, orderId, total, status, createdAt, staffName, items, customer } = route.params;
@@ -49,10 +60,16 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const posOrderId = usePosStore((s) => s.orderId);
   const posItems = usePosStore((s) => s.items);
   const posTotal = usePosStore((s) => s.grandTotal);
+  const products = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+  const fetchCategories = useCategoriesStore((s) => s.fetchCategories);
+  const fetchOrders = useOrdersStore((s) => s.fetchOrders);
+  const stockByProductId = useInventoryStore((s) => s.stockByProductId);
 
   const [method, setMethod] = useState<PaymentMethod>('cash');
-  const [showSuccess, setShowSuccess] = useState(false);
   const [isCheckingOutDirect, setIsCheckingOutDirect] = useState(false);
+  const [transactionCode, setTransactionCode] = useState(() => buildTransactionCode(orderCode));
+  const { alertProps, showAlert } = useCommonAlert();
 
   const isBusy = isCheckingOut || isCheckingOutDirect;
 
@@ -60,7 +77,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     if (items && items.length > 0) return items;
     if (orderId && orderId === posOrderId) {
       return posItems.map((it) => ({
-        id: it.itemId,
+        id: it.productId,
         productName: it.productName,
         unitPrice: it.unitPrice,
         quantity: it.quantity,
@@ -68,6 +85,42 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     return [];
   }, [items, orderId, posOrderId, posItems]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!accessToken) return;
+      (async () => {
+        await fetchCategories(accessToken);
+        const cats = useCategoriesStore.getState().categories;
+        await fetchProducts(accessToken, cats);
+      })();
+    }, [accessToken, fetchCategories, fetchProducts]),
+  );
+
+  const stockItems: StockItem[] = useMemo(
+    () => summaryItems.map((it) => ({ productId: it.id, quantity: it.quantity })),
+    [summaryItems],
+  );
+
+  const resolveStockInfo = useCallback((productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      return { onHand: product.onHand, trackInventory: product.trackInventory };
+    }
+    const fallback = stockByProductId[productId];
+    if (typeof fallback === 'number') {
+      return { onHand: fallback, trackInventory: true };
+    }
+    return { onHand: 0, trackInventory: false };
+  }, [products, stockByProductId]);
+
+  const hasInvalidItems = useMemo(() => {
+    return stockItems.some((item) => {
+      const { onHand, trackInventory } = resolveStockInfo(item.productId);
+      if (!trackInventory || onHand <= 0) return true;
+      return item.quantity > onHand;
+    });
+  }, [stockItems, resolveStockInfo]);
 
   const subtotal = useMemo(
     () => summaryItems.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0),
@@ -94,13 +147,69 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const displayStatus: OrderStatusApi = status ?? 'draft';
   const displayStaff = staffName ?? staffFromAuth ?? 'Nhân viên';
 
+  useEffect(() => {
+    if (method === 'transfer' && !transactionCode) {
+      setTransactionCode(buildTransactionCode(orderCode));
+    }
+  }, [method, orderCode, transactionCode]);
+
+  const handleRefreshQr = useCallback(() => {
+    setTransactionCode(buildTransactionCode(orderCode));
+  }, [orderCode]);
+
+  const handleSuccessOk = useCallback(() => {
+    const posOrderId = usePosStore.getState().orderId;
+    if (orderId && orderId === posOrderId) {
+      resetSession();
+    }
+    if (accessToken) {
+      (async () => {
+        await fetchCategories(accessToken);
+        const cats = useCategoriesStore.getState().categories;
+        await fetchProducts(accessToken, cats);
+        await fetchOrders(accessToken);
+      })();
+    }
+    navigation.popToTop();
+  }, [navigation, orderId, resetSession, accessToken, fetchCategories, fetchProducts, fetchOrders]);
+
   const handleConfirm = useCallback(async () => {
-    // No orderId → legacy display-only path
-    if (!orderId) {
-      setShowSuccess(true);
+    if (!accessToken) return;
+    await fetchCategories(accessToken);
+    const cats = useCategoriesStore.getState().categories;
+    await fetchProducts(accessToken, cats);
+    const latestProducts = useProductsStore.getState().products;
+    const latestStocks = useInventoryStore.getState().stockByProductId;
+    const invalid = stockItems.some((item) => {
+      const product = latestProducts.find((p) => p.id === item.productId);
+      if (product) {
+        if (!product.trackInventory || product.onHand <= 0) return true;
+        return item.quantity > product.onHand;
+      }
+      const fallback = latestStocks[item.productId];
+      if (typeof fallback !== 'number') return true;
+      return item.quantity > fallback;
+    });
+
+    if (invalid) {
+      showAlert({
+        variant: 'warning',
+        title: 'Không thể thanh toán',
+        message: 'Đơn hàng có sản phẩm không đủ tồn kho',
+      });
       return;
     }
-    if (!accessToken) return;
+    // No orderId → legacy display-only path
+    if (!orderId) {
+      showAlert({
+        variant: 'success',
+        title: 'Thanh toán thành công!',
+        message: `Đã thanh toán thành công ${formatAmount(displayTotal)} cho đơn hàng ${orderCode}`,
+        confirmText: 'OK',
+        onConfirm: handleSuccessOk,
+      });
+      return;
+    }
 
     if (orderId === posOrderId) {
       // Current POS session → use posStore (handles its own loading state)
@@ -109,13 +218,24 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         payment_status: 'paid',
       });
       if (ok) {
-        setShowSuccess(true);
+        showAlert({
+          variant: 'success',
+          title: 'Thanh toán thành công!',
+          message: `Đã thanh toán thành công ${formatAmount(displayTotal)} cho đơn hàng ${orderCode}`,
+          confirmText: 'OK',
+          onConfirm: handleSuccessOk,
+        });
       } else {
         const err = usePosStore.getState().error;
         if (err) {
-          Alert.alert('Thanh toán thất bại', err, [
-            { text: 'OK', onPress: () => usePosStore.getState().clearError() },
-          ]);
+          showAlert({
+            variant: 'danger',
+            title: 'Thanh toán thất bại',
+            message: err,
+            confirmText: 'OK',
+            showCancel: false,
+            onConfirm: () => usePosStore.getState().clearError(),
+          });
         }
       }
     } else {
@@ -126,23 +246,26 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           payment_method: method,
           payment_status: 'paid',
         });
-        setShowSuccess(true);
+        showAlert({
+          variant: 'success',
+          title: 'Thanh toán thành công!',
+          message: `Đã thanh toán thành công ${formatAmount(displayTotal)} cho đơn hàng ${orderCode}`,
+          confirmText: 'OK',
+          onConfirm: handleSuccessOk,
+        });
       } catch (err) {
-        Alert.alert('Thanh toán thất bại', err instanceof Error ? err.message : 'Có lỗi xảy ra');
+        showAlert({
+          variant: 'danger',
+          title: 'Thanh toán thất bại',
+          message: err instanceof Error ? err.message : 'Có lỗi xảy ra',
+          confirmText: 'OK',
+          showCancel: false,
+        });
       } finally {
         setIsCheckingOutDirect(false);
       }
     }
-  }, [accessToken, orderId, checkout, method, posOrderId]);
-
-  const handleSuccessOk = useCallback(() => {
-    setShowSuccess(false);
-    const posOrderId = usePosStore.getState().orderId;
-    if (orderId && orderId === posOrderId) {
-      resetSession();
-    }
-    navigation.popToTop();
-  }, [navigation, orderId, resetSession]);
+  }, [accessToken, orderId, checkout, method, posOrderId, fetchCategories, fetchProducts, stockItems, showAlert, displayTotal, orderCode, handleSuccessOk]);
 
   return (
     <View style={styles.container}>
@@ -173,7 +296,10 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.emptyText}>Chưa có sản phẩm</Text>
           ) : (
             summaryItems.map((item) => (
-              <View key={item.id} style={styles.productRow}>
+              <View
+                key={buildOrderItemKey(orderId ?? posOrderId ?? 'pos', item.id)}
+                style={styles.productRow}
+              >
                 <Text style={styles.productQty}>{item.quantity}x</Text>
                 <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
                 <Text style={styles.productPrice}>{formatAmount(item.unitPrice * item.quantity)}</Text>
@@ -231,14 +357,22 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             ))}
           </View>
         </View>
+
+        {method === 'transfer' && (
+          <TransferQrCard
+            transactionCode={transactionCode}
+            onConfirm={handleConfirm}
+            onRefresh={handleRefreshQr}
+          />
+        )}
       </ScrollView>
 
       {/* ── Confirm CTA ── */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.sm }]}>
         <TouchableOpacity
-          style={[styles.ctaBtn, isBusy && styles.ctaBtnDisabled]}
-          onPress={isBusy ? undefined : handleConfirm}
-          activeOpacity={isBusy ? 1 : 0.8}
+          style={[styles.ctaBtn, (isBusy || hasInvalidItems) && styles.ctaBtnDisabled]}
+          onPress={isBusy || hasInvalidItems ? undefined : handleConfirm}
+          activeOpacity={isBusy || hasInvalidItems ? 1 : 0.8}
         >
           {isBusy ? (
             <ActivityIndicator color="#fff" />
@@ -248,13 +382,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      {/* ── Success Modal ── */}
-      <PaymentSuccessModal
-        visible={showSuccess}
-        orderCode={orderCode}
-        formattedTotal={formatAmount(total)}
-        onOk={handleSuccessOk}
-      />
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };

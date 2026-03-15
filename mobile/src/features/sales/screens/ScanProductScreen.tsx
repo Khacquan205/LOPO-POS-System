@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, type BarcodeScanningResult, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { useProductsStore } from '../../products/store/products.store';
 import { useCategoriesStore } from '../../products/store/categories.store';
 import { useAuthStore } from '../../../store/auth.store';
@@ -28,13 +30,9 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isHandlingScan, setIsHandlingScan] = useState(false);
-  const [isResultVisible, setIsResultVisible] = useState(false);
-  const [resultType, setResultType] = useState<'success' | 'error'>('success');
-  const [resultTitle, setResultTitle] = useState('');
-  const [resultMessage, setResultMessage] = useState('');
-  const [showResultAction, setShowResultAction] = useState(false);
   const scanLockRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { alertProps, showAlert, hideAlert } = useCommonAlert();
 
   const hasPermission = permission?.granted ?? false;
 
@@ -67,29 +65,34 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
   const resetScanState = useCallback(() => {
     scanLockRef.current = false;
     setIsHandlingScan(false);
-    setIsResultVisible(false);
-    setResultMessage('');
-    setResultTitle('');
-    setShowResultAction(false);
-  }, []);
+    hideAlert();
+  }, [hideAlert]);
 
   const navigateToOrderScreen = useCallback(() => {
-    if (returnScreen === 'DraftOrderDetail' && orderId) {
-      navigation.replace('DraftOrderDetail', { orderId });
+    if (navigation.canGoBack()) {
+      navigation.goBack();
       return;
     }
-    navigation.replace('Sales');
+    if (returnScreen === 'DraftOrderDetail' && orderId) {
+      navigation.navigate('DraftOrderDetail', { orderId });
+      return;
+    }
+    navigation.navigate('Sales');
   }, [navigation, orderId, returnScreen]);
 
   const openResultModal = useCallback(
     (type: 'success' | 'error', title: string, message: string, withAction: boolean) => {
-      setResultType(type);
-      setResultTitle(title);
-      setResultMessage(message);
-      setShowResultAction(withAction);
-      setIsResultVisible(true);
+      showAlert({
+        variant: type === 'success' ? 'success' : 'danger',
+        title,
+        message,
+        confirmText: 'OK',
+        showCancel: false,
+        loading: !withAction && type === 'success',
+        onConfirm: withAction ? resetScanState : undefined,
+      });
     },
-    [],
+    [resetScanState, showAlert],
   );
 
   const handleNotFound = useCallback(() => {
@@ -113,9 +116,15 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (!accessToken) {
-      Alert.alert('Không thể quét', 'Vui lòng đăng nhập lại để tiếp tục.', [
-        { text: 'OK', onPress: () => navigation.replace('Sales') },
-      ]);
+      scanLockRef.current = false;
+      setIsHandlingScan(false);
+      showAlert({
+        variant: 'warning',
+        title: 'Không thể quét',
+        message: 'Vui lòng đăng nhập lại để tiếp tục.',
+        confirmText: 'OK',
+        onConfirm: () => navigation.replace('Sales'),
+      });
       return;
     }
 
@@ -128,6 +137,16 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
 
     if (!matched) {
       handleNotFound();
+      return;
+    }
+
+    if (!matched.trackInventory || matched.onHand <= 0) {
+      openResultModal(
+        'error',
+        'Hết hàng',
+        'Sản phẩm tạm hết hàng',
+        true,
+      );
       return;
     }
 
@@ -162,6 +181,7 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
         return;
       }
 
+      hideAlert();
       navigateToOrderScreen();
     }, 1000);
   }, [
@@ -175,7 +195,8 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
     clearPosError,
     openResultModal,
     navigateToOrderScreen,
-    resetScanState,
+    showAlert,
+    hideAlert,
   ]);
 
   const cameraOverlay = useMemo(() => (
@@ -239,30 +260,7 @@ export const ScanProductScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       )}
 
-      <Modal transparent visible={isResultVisible} animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalIconWrap, resultType === 'success' ? styles.modalIconSuccess : styles.modalIconError]}>
-              <Ionicons
-                name={resultType === 'success' ? 'checkmark' : 'close'}
-                size={34}
-                color={resultType === 'success' ? colors.success : colors.error}
-              />
-            </View>
-            <Text style={styles.modalTitle}>{resultTitle}</Text>
-            <Text style={styles.modalMessage}>{resultMessage}</Text>
-            {showResultAction && (
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={resetScanState}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalButtonText}>OK</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };
@@ -338,60 +336,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 13,
     fontWeight: '600',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  modalCard: {
-    backgroundColor: colors.background,
-    borderRadius: 18,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    width: '100%',
-    maxWidth: 320,
-    alignItems: 'center',
-  },
-  modalIconWrap: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  modalIconSuccess: {
-    backgroundColor: '#E8F6EF',
-  },
-  modalIconError: {
-    backgroundColor: '#FDECEC',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  modalMessage: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  modalButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.xl,
-  },
-  modalButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
   },
   permissionWrap: {
     flex: 1,

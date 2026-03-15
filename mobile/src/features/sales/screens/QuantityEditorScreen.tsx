@@ -3,9 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { QuantityKeypad } from '../components';
 import { formatPrice } from '../../products/mock/products.mock';
 import type { MainStackScreenProps } from '../../../types/navigation';
+import { useAuthStore } from '../../../store/auth.store';
+import { usePosStore } from '../store/pos.store';
+import { useProductsStore } from '../../products/store/products.store';
+import { useInventoryStore } from '../../products/store/inventory.store';
 
 type Props = MainStackScreenProps<'QuantityEditor'>;
 
@@ -13,17 +19,57 @@ export const QuantityEditorScreen: React.FC<Props> = ({ navigation, route }) => 
   const { orderId, itemId, productName, unitPrice, currentQty, returnScreen } = route.params;
   const insets = useSafeAreaInsets();
   const [qtyStr, setQtyStr] = useState(String(currentQty));
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const posItems = usePosStore((s) => s.items);
+  const setItemQty = usePosStore((s) => s.setItemQty);
+  const products = useProductsStore((s) => s.products);
+  const stockByProductId = useInventoryStore((s) => s.stockByProductId);
+  const { alertProps, showAlert } = useCommonAlert();
 
   const qty = Math.max(0, parseInt(qtyStr, 10) || 0);
   const lineTotal = qty * unitPrice;
 
+  const resolveStockInfo = useCallback((productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      return { onHand: product.onHand, trackInventory: product.trackInventory };
+    }
+    const fallback = stockByProductId[productId];
+    if (typeof fallback === 'number') {
+      return { onHand: fallback, trackInventory: true };
+    }
+    return { onHand: 0, trackInventory: false };
+  }, [products, stockByProductId]);
+
   const handleDone = useCallback(() => {
     if (returnScreen === 'Sales') {
-      navigation.navigate('Sales', { updatedItem: { itemId, qty } });
-    } else {
-      navigation.navigate('DraftOrderDetail', { orderId, updatedItem: { itemId, qty } });
+      if (!accessToken) return;
+      const cartItem = posItems.find((it) => it.itemId === itemId);
+      if (!cartItem) {
+        showAlert({
+          variant: 'danger',
+          title: 'Lỗi',
+          message: 'Không tìm thấy sản phẩm trong đơn hiện tại.',
+          showCancel: false,
+        });
+        return;
+      }
+      const { onHand, trackInventory } = resolveStockInfo(cartItem.productId);
+      if (qty > 0 && (!trackInventory || qty > onHand)) {
+        showAlert({
+          variant: 'warning',
+          title: 'Sản phẩm tồn kho không đủ',
+          message: `Còn ${onHand} sản phẩm trong kho.`,
+        });
+        return;
+      }
+      setItemQty(accessToken, cartItem.productId, qty, onHand, trackInventory);
+      navigation.goBack();
+      return;
     }
-  }, [qty, itemId, orderId, returnScreen, navigation]);
+
+    navigation.navigate('DraftOrderDetail', { orderId, updatedItem: { itemId, qty } });
+  }, [accessToken, returnScreen, posItems, itemId, qty, resolveStockInfo, setItemQty, navigation, orderId, showAlert]);
 
   return (
     <View style={styles.container}>
@@ -57,6 +103,8 @@ export const QuantityEditorScreen: React.FC<Props> = ({ navigation, route }) => 
           <Text style={styles.doneText}>Xong</Text>
         </TouchableOpacity>
       </View>
+
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };

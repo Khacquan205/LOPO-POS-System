@@ -1,14 +1,21 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  Alert,
   ActivityIndicator,
+  Modal,
+  TouchableOpacity,
+  Pressable,
+  Animated,
+  Easing,
 } from 'react-native';
+import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import {
   SalesActionButton,
   SelectedProductRow,
@@ -20,14 +27,20 @@ import { CustomerPickerBottomSheet } from '../../customers/components';
 import type { Customer } from '../../customers/mock/customers.mock';
 import { usePosStore } from '../store/pos.store';
 import { useProductsStore } from '../../products/store/products.store';
+import { useInventoryStore } from '../../products/store/inventory.store';
+import { useCategoriesStore } from '../../products/store/categories.store';
 import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
+import type { StockItem } from '../../../lib/stock';
 
 type Props = MainStackScreenProps<'Sales'>;
 
 export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const accessToken = useAuthStore((s) => s.accessToken);
   const allProducts = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+  const fetchCategories = useCategoriesStore((s) => s.fetchCategories);
+  const stockByProductId = useInventoryStore((s) => s.stockByProductId);
 
   // ── POS Store ─────────────────────────────────────────────────
   const posItems = usePosStore((s) => s.items);
@@ -35,6 +48,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const orderCode = usePosStore((s) => s.orderCode);
   const grandTotal = usePosStore((s) => s.grandTotal);
   const isCreatingOrder = usePosStore((s) => s.isCreatingOrder);
+  const isLoadingDraft = usePosStore((s) => s.isLoadingDraft);
   const isUpdatingItems = usePosStore((s) => s.isUpdatingItems);
   const isCancelling = usePosStore((s) => s.isCancelling);
   const posError = usePosStore((s) => s.error);
@@ -45,15 +59,20 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const setItemQty = usePosStore((s) => s.setItemQty);
   const cancelOrder = usePosStore((s) => s.cancel);
   const resetSession = usePosStore((s) => s.resetSession);
+  const loadDraftOrder = usePosStore((s) => s.loadDraftOrder);
+  const startNewDraft = usePosStore((s) => s.startNewDraft);
+  const validateDraftOrder = usePosStore((s) => s.validateDraftOrder);
 
   const [customer, setCustomer] = React.useState<Customer | undefined>(undefined);
   const [showPicker, setShowPicker] = React.useState(false);
+  const [isEditingDraft, setIsEditingDraft] = React.useState(false);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+  const { alertProps, showAlert } = useCommonAlert();
 
-  // ── Show backend error alerts ─────────────────────────────────
-  useEffect(() => {
-    if (!posError) return;
-    Alert.alert('Lỗi', posError, [{ text: 'OK', onPress: clearError }]);
-  }, [posError]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleDismissError = useCallback(() => {
+    clearError();
+  }, [clearError]);
 
   // ── Receive pickedItems from ProductPicker ────────────────────
   useEffect(() => {
@@ -68,7 +87,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
         productName: pi.productName,
         unitPrice: pi.unitPrice,
         quantity: pi.quantity,
-        trackInventory: p?.trackInventory ?? false,
+        trackInventory: p?.trackInventory ?? true,
         onHand: p?.onHand ?? 0,
       };
     });
@@ -76,6 +95,55 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     addPickedItems(accessToken, enriched);
     navigation.setParams({ pickedItems: undefined });
   }, [route.params?.pickedItems]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load draft order from Orders list ────────────────────────
+  useEffect(() => {
+    const draftOrderId = route.params?.draftOrderId;
+    if (!draftOrderId || !accessToken) return;
+    if (draftOrderId === orderId) {
+      navigation.setParams({ draftOrderId: undefined });
+      return;
+    }
+
+    (async () => {
+      setIsEditingDraft(true);
+      const ok = await loadDraftOrder(accessToken, draftOrderId);
+      if (ok) setCustomer(undefined);
+      navigation.setParams({ draftOrderId: undefined });
+    })();
+  }, [route.params?.draftOrderId, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const source = route.params?.source;
+    if (source === 'orders') {
+      setIsEditingDraft(true);
+      return;
+    }
+    if (!route.params?.draftOrderId) {
+      setIsEditingDraft(false);
+    }
+  }, [route.params?.source, route.params?.draftOrderId]);
+
+  useEffect(() => {
+    Animated.timing(menuAnim, {
+      toValue: isMenuOpen ? 1 : 0,
+      duration: isMenuOpen ? 220 : 180,
+      easing: isMenuOpen ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [isMenuOpen, menuAnim]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!accessToken) return;
+      validateDraftOrder(accessToken);
+      (async () => {
+        await fetchCategories(accessToken);
+        const cats = useCategoriesStore.getState().categories;
+        await fetchProducts(accessToken, cats);
+      })();
+    }, [accessToken, validateDraftOrder, fetchCategories, fetchProducts]),
+  );
 
   // ── Receive updatedItem from QuantityEditor ───────────────────
   useEffect(() => {
@@ -93,7 +161,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
         cartItem.productId,
         upd.qty,
         product?.onHand ?? 0,
-        product?.trackInventory ?? false,
+        product?.trackInventory ?? true,
       );
     }
     navigation.setParams({ updatedItem: undefined });
@@ -128,13 +196,25 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     [navigation, orderId],
   );
 
+  const resolveStockInfo = useCallback((productId: string) => {
+    const product = allProducts.find((p) => p.id === productId);
+    if (product) {
+      return { onHand: product.onHand, trackInventory: product.trackInventory };
+    }
+    const fallback = stockByProductId[productId];
+    if (typeof fallback === 'number') {
+      return { onHand: fallback, trackInventory: true };
+    }
+    return { onHand: 0, trackInventory: false };
+  }, [allProducts, stockByProductId]);
+
   const handleItemAdd = useCallback(
     (item: SalesOrderItem) => {
       if (!accessToken) return;
-      const product = allProducts.find((p) => p.id === item.productId);
-      incrementItem(accessToken, item.productId, product?.onHand ?? 0, product?.trackInventory ?? false);
+      const { onHand, trackInventory } = resolveStockInfo(item.productId);
+      incrementItem(accessToken, item.productId, onHand, trackInventory);
     },
-    [accessToken, allProducts, incrementItem],
+    [accessToken, incrementItem, resolveStockInfo],
   );
 
   const handleItemRemove = useCallback(
@@ -145,35 +225,142 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     [accessToken, decrementItem],
   );
 
-  const handlePayment = useCallback(() => {
+  const handlePayment = useCallback(async () => {
+    if (!accessToken) return;
+    await fetchCategories(accessToken);
+    const cats = useCategoriesStore.getState().categories;
+    await fetchProducts(accessToken, cats);
+    const latestProducts = useProductsStore.getState().products;
+    const latestStocks = useInventoryStore.getState().stockByProductId;
+
+    const stockItems: StockItem[] = posItems.map((it) => ({
+      productId: it.productId,
+      quantity: it.quantity,
+    }));
+
+    const invalid = stockItems.some((item) => {
+      const product = latestProducts.find((p) => p.id === item.productId);
+      if (product) {
+        if (!product.trackInventory || product.onHand <= 0) return true;
+        return item.quantity > product.onHand;
+      }
+      const fallback = latestStocks[item.productId];
+      if (typeof fallback !== 'number') return true;
+      return item.quantity > fallback;
+    });
+
+    if (invalid) {
+      showAlert({
+        variant: 'warning',
+        title: 'Không thể thanh toán',
+        message: 'Đơn hàng có sản phẩm không đủ tồn kho',
+      });
+      return;
+    }
+
     if (!orderId || !orderCode || posItems.length === 0) return;
     navigation.navigate('Payment', {
       orderCode,
       orderId,
       total: grandTotal,
     });
-  }, [navigation, orderId, orderCode, posItems.length, grandTotal]);
+  }, [accessToken, fetchCategories, fetchProducts, navigation, orderId, orderCode, posItems, grandTotal, showAlert]);
 
   const handleCancelOrder = useCallback(() => {
     if (!orderId || !accessToken) return;
-    Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn nháp này không?',
-      [
-        { text: 'Không', style: 'cancel' },
-        {
-          text: 'Hủy đơn',
-          style: 'destructive',
-          onPress: async () => {
+    showAlert({
+      variant: 'danger',
+      title: 'Hủy đơn hàng',
+      message: 'Bạn có chắc chắn muốn hủy đơn nháp này không?',
+      confirmText: 'Hủy đơn',
+      cancelText: 'Không',
+      showCancel: true,
+      onConfirm: async () => {
+        const ok = await cancelOrder(accessToken);
+        if (ok) {
+          resetSession();
+        }
+      },
+    });
+  }, [orderId, accessToken, cancelOrder, resetSession, showAlert]);
+
+  const handleMenuDelete = useCallback(() => {
+    setIsMenuOpen(false);
+    handleCancelOrder();
+  }, [handleCancelOrder]);
+
+  const handleNewOrder = useCallback(async () => {
+    if (!accessToken) return;
+    if (isUpdatingItems) {
+      showAlert({
+        variant: 'warning',
+        title: 'Đang đồng bộ',
+        message: 'Vui lòng chờ đồng bộ xong trước khi tạo đơn mới.',
+      });
+      return;
+    }
+    const newId = await startNewDraft(accessToken);
+    if (newId) setCustomer(undefined);
+  }, [accessToken, isUpdatingItems, startNewDraft, showAlert]);
+
+  const handleMenuNewOrder = useCallback(() => {
+    setIsMenuOpen(false);
+    handleNewOrder();
+  }, [handleNewOrder]);
+
+  const handleBack = useCallback(() => {
+    if (posItems.length === 0) {
+      showAlert({
+        variant: 'danger',
+        title: 'Hủy đơn',
+        message: 'Bạn có muốn hủy đơn này không?',
+        confirmText: 'Xác nhận',
+        cancelText: 'Hủy',
+        showCancel: true,
+        onConfirm: async () => {
+          if (orderId && accessToken) {
             const ok = await cancelOrder(accessToken);
-            if (ok) {
-              resetSession();
+            if (ok) resetSession();
+          } else {
+            resetSession();
+          }
+
+          if (isEditingDraft) {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+              return;
             }
-          },
+            navigation.navigate('Orders');
+            return;
+          }
+
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            }),
+          );
         },
-      ],
+      });
+      return;
+    }
+
+    if (isEditingDraft) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return;
+      }
+      navigation.navigate('Orders');
+      return;
+    }
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      }),
     );
-  }, [orderId, accessToken, cancelOrder, resetSession]);
+  }, [posItems.length, orderId, accessToken, cancelOrder, resetSession, isEditingDraft, navigation, showAlert]);
 
   // Convert POS items to SalesOrderItem shape for SelectedProductRow
   const salesItems: SalesOrderItem[] = posItems.map((it) => ({
@@ -184,11 +371,40 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     quantity: it.quantity,
   }));
 
-  const isBusy = isCreatingOrder || isUpdatingItems || isCancelling;
+  const isBusy = isCreatingOrder || isLoadingDraft || isUpdatingItems || isCancelling;
+
+  const stockItems: StockItem[] = useMemo(
+    () => posItems.map((it) => ({ productId: it.productId, quantity: it.quantity })),
+    [posItems],
+  );
+
+  const stockWarnings = useMemo(() => {
+    const warnings: Record<string, string> = {};
+    stockItems.forEach((item) => {
+      const { onHand, trackInventory } = resolveStockInfo(item.productId);
+      if (!trackInventory || onHand <= 0) {
+        warnings[item.productId] = 'Sản phẩm tạm hết hàng';
+        return;
+      }
+      if (item.quantity > onHand) {
+        warnings[item.productId] = `Chỉ còn ${onHand} sản phẩm trong kho`;
+      }
+    });
+    return warnings;
+  }, [stockItems, resolveStockInfo]);
+
+  const hasInvalidItems = useMemo(() => {
+    return stockItems.some((item) => {
+      const { onHand, trackInventory } = resolveStockInfo(item.productId);
+      if (!trackInventory || onHand <= 0) return true;
+      return item.quantity > onHand;
+    });
+  }, [stockItems, resolveStockInfo]);
 
   const renderItem = ({ item }: { item: SalesOrderItem }) => (
     <SelectedProductRow
       item={item}
+      note={stockWarnings[item.productId]}
       onQtyPress={() => openQuantityEditor(item)}
       onAdd={() => handleItemAdd(item)}
       onRemove={() => handleItemRemove(item)}
@@ -202,10 +418,9 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
         title="Đơn mới"
         subtitle={orderCode ?? undefined}
         showBack
-        rightIcon="add-outline"
-        onRightPress={openProductPicker}
-        rightSecondaryIcon="trash-outline"
-        onRightSecondaryPress={handleCancelOrder}
+        onBackPress={handleBack}
+        rightSecondaryIcon="ellipsis-vertical"
+        onRightSecondaryPress={() => setIsMenuOpen(true)}
       />
 
       {/* Action buttons */}
@@ -215,7 +430,6 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
           iconName="add-circle-outline"
           onPress={openProductPicker}
         />
-        <View style={styles.actionSpacer} />
         <SalesActionButton
           title="Quét sản phẩm"
           iconName="scan-outline"
@@ -231,20 +445,35 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       )}
 
+      {posError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{posError}</Text>
+          <TouchableOpacity onPress={handleDismissError} activeOpacity={0.7}>
+            <Text style={styles.errorDismiss}>Đóng</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Product list or empty state */}
       {salesItems.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>(Chưa có sản phẩm nào)</Text>
+          <Text style={styles.emptyText}>Chưa có sản phẩm trong giỏ hàng</Text>
         </View>
       ) : (
         <FlatList
           data={salesItems}
-          keyExtractor={(it) => it.itemId}
+          keyExtractor={(it) => `${orderId ?? 'new'}:${it.productId}`}
           renderItem={renderItem}
           ItemSeparatorComponent={() => <View style={styles.divider} />}
           style={styles.list}
           contentContainerStyle={styles.listContent}
         />
+      )}
+
+      {hasInvalidItems && (
+        <Text style={styles.paymentWarning}>
+          Vui lòng cập nhật số lượng các sản phẩm không đủ tồn kho trước khi thanh toán.
+        </Text>
       )}
 
       {/* Customer bar */}
@@ -254,7 +483,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       <TotalFooter
         total={grandTotal}
         onPress={handlePayment}
-        disabled={salesItems.length === 0 || isBusy}
+        disabled={salesItems.length === 0 || isBusy || hasInvalidItems}
         label="Thanh toán"
       />
 
@@ -264,6 +493,60 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
         onClose={() => setShowPicker(false)}
         onSelect={(c) => { setCustomer(c); setShowPicker(false); }}
       />
+
+      <Modal
+        transparent
+        visible={isMenuOpen}
+        animationType="slide"
+        onRequestClose={() => setIsMenuOpen(false)}
+      >
+        <View style={styles.menuBackdrop}>
+          <Animated.View
+            style={[
+              styles.menuOverlay,
+              {
+                opacity: menuAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.45],
+                }),
+              },
+            ]}
+          />
+          <Pressable style={styles.menuBackdropPressable} onPress={() => setIsMenuOpen(false)} />
+          <Animated.View
+            style={[
+              styles.menuSheet,
+              {
+                transform: [
+                  {
+                    translateY: menuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [220, 0],
+                    }),
+                  },
+                ],
+                opacity: menuAnim,
+              },
+            ]}
+          >
+            <View style={styles.menuHandle} />
+            <Text style={styles.menuTitle}>TÙY CHỌN</Text>
+            <TouchableOpacity style={[styles.menuItem, styles.menuItemDanger]} onPress={handleMenuDelete}>
+              <Text style={[styles.menuText, styles.menuTextDanger]}>Xóa đơn</Text>
+            </TouchableOpacity>
+            {!isEditingDraft && (
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity style={styles.menuItem} onPress={handleMenuNewOrder}>
+                  <Text style={styles.menuText}>Tạo đơn mới</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };
@@ -275,13 +558,79 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: spacing.sm,
   },
-  actionSpacer: {
-    width: spacing.sm,
+  menuBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.black,
+  },
+  menuBackdropPressable: {
+    flex: 1,
+  },
+  menuSheet: {
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.sm,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  menuHandle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  menuTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  menuItem: {
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+  },
+  menuItemDanger: {
+    backgroundColor: '#FFF5F5',
+    borderColor: colors.error,
+  },
+  menuDivider: {
+    height: spacing.sm,
+  },
+  menuText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+  },
+  menuTextDanger: {
+    color: colors.error,
   },
   syncRow: {
     flexDirection: 'row',
@@ -294,6 +643,29 @@ const styles = StyleSheet.create({
   syncText: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  errorBanner: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: '#FFF1F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.error,
+  },
+  errorDismiss: {
+    fontSize: 12,
+    color: colors.error,
+    fontWeight: '700',
   },
   empty: {
     flex: 1,
@@ -315,5 +687,11 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.borderLight,
     marginHorizontal: spacing.md,
+  },
+  paymentWarning: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.error,
+    marginTop: spacing.sm,
   },
 });

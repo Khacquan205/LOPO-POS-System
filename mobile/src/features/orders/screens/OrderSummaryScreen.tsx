@@ -20,6 +20,8 @@ type DisplayOrder = {
   total: number;
 };
 
+const buildOrderItemKey = (orderKey: string, productId: string) => `${orderKey}:${productId}`;
+
 export const OrderSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { orderId, liveOrder } = route.params;
   const insets = useSafeAreaInsets();
@@ -76,7 +78,7 @@ export const OrderSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sản phẩm ({totalItems} món)</Text>
           {displayOrder.items.map((item) => (
-            <View key={item.id} style={styles.productRow}>
+            <View key={buildOrderItemKey(orderId ?? displayOrder.code, item.id)} style={styles.productRow}>
               <Text style={styles.productQty}>{item.quantity}x</Text>
               <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
               <Text style={styles.productPrice}>{formatCurrencyVND(item.unitPrice * item.quantity)}</Text>

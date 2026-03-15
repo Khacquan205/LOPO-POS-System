@@ -18,13 +18,12 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
   onAdd,
   onRemove,
 }) => {
-  const outOfStock = product.trackInventory && product.onHand <= 0;
+  const outOfStock = !product.trackInventory || product.onHand <= 0;
 
   return (
     <Pressable
       style={styles.container}
-      onPress={outOfStock ? undefined : onAdd}
-      disabled={outOfStock}
+      onPress={onAdd}
     >
       <View style={[styles.colorBar, { backgroundColor: product.categoryColor ?? colors.border }]} />
 
@@ -57,7 +56,7 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
             style={[styles.stepBtn, outOfStock && styles.stepBtnDisabled]}
             onPress={(e) => {
               e.stopPropagation();
-              if (!outOfStock) onAdd();
+              onAdd();
             }}
             activeOpacity={outOfStock ? 1 : 0.7}
           >
@@ -69,7 +68,7 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
           style={[styles.addIcon, outOfStock && styles.stepBtnDisabled]}
           onPress={(e) => {
             e.stopPropagation();
-            if (!outOfStock) onAdd();
+            onAdd();
           }}
           activeOpacity={outOfStock ? 1 : 0.7}
         >

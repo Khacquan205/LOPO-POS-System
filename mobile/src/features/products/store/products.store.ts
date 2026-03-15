@@ -9,6 +9,7 @@ import {
   type CreateProductPayload,
   type UpdateProductPayload,
 } from "../services/products.service";
+import { useInventoryStore } from "./inventory.store";
 
 export interface CategoryLookup {
   id: string;
@@ -17,7 +18,7 @@ export interface CategoryLookup {
 }
 
 export interface ProductItemViewModel {
-  id: string;
+  id: string; 
   name: string;
   price: number;
   barcode: string | null;
@@ -77,6 +78,17 @@ function resolveProductId(item: { _id?: string; product_id?: string }): string {
   return item._id ?? item.product_id ?? "";
 }
 
+function resolveOnHand(
+  item: ApiProduct,
+  stockByProductId: Record<string, number>,
+): number {
+  const productId = resolveProductId(item);
+  if (productId && typeof stockByProductId[productId] === "number") {
+    return stockByProductId[productId];
+  }
+  return typeof item.on_hand === "number" ? item.on_hand : 0;
+}
+
 function resolveCategory(
   categoryId: string | null,
   categories: CategoryLookup[],
@@ -96,6 +108,7 @@ function resolveCategory(
 function mapApiProductToViewModel(
   item: ApiProduct,
   categories: CategoryLookup[],
+  stockByProductId: Record<string, number>,
 ): ProductItemViewModel | null {
   const normalizedId = resolveProductId(item);
   if (!normalizedId) return null;
@@ -109,7 +122,7 @@ function mapApiProductToViewModel(
     categoryId: item.category_id,
     category: category.name,
     categoryColor: category.color,
-    onHand: typeof item.on_hand === "number" ? item.on_hand : 0,
+    onHand: resolveOnHand(item, stockByProductId),
     trackInventory: item.track_inventory,
     status: item.is_active ? "active" : "inactive",
     image: item.image_url ?? undefined,
@@ -120,17 +133,21 @@ export const useProductsStore = create<ProductsState>((set, get) => ({
   products: [],
 
   fetchProducts: async (token, categories = []) => {
+    await useInventoryStore.getState().fetchAllStocks(token);
+    const stockByProductId = useInventoryStore.getState().stockByProductId;
     const items = await getProducts(token);
     set({
       products: items
-        .map((item) => mapApiProductToViewModel(item, categories))
+        .map((item) => mapApiProductToViewModel(item, categories, stockByProductId))
         .filter((item): item is ProductItemViewModel => item !== null),
     });
   },
 
   fetchProductById: async (token, productId, categories = []) => {
     const item = await getProductById(token, productId);
-    const mapped = mapApiProductToViewModel(item, categories);
+    await useInventoryStore.getState().fetchStockByProduct(token, productId);
+    const stockByProductId = useInventoryStore.getState().stockByProductId;
+    const mapped = mapApiProductToViewModel(item, categories, stockByProductId);
     if (!mapped) return null;
 
     set((state) => ({

@@ -95,7 +95,22 @@ export const HomeScreen: React.FC = () => {
   const handleGridPress = (key: FeatureKey): void => {
     const routeName = ROUTE_MAP[key];
     if (routeName) {
-      navigation.navigate(routeName as never);
+      switch (routeName) {
+        case 'Sales':
+          navigation.navigate('Sales', { source: 'sales' });
+          return;
+        case 'Orders':
+        case 'Products':
+        case 'Customers':
+        case 'Staff':
+        case 'Settings':
+        case 'Support':
+        case 'Notifications':
+          navigation.navigate(routeName);
+          return;
+        default:
+          return;
+      }
     }
   };
 

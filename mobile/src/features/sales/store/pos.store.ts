@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import {
   createDraftOrder,
+  getOrderDetail,
   updateOrderItems,
   checkoutOrder,
   cancelDraftOrder,
+  type ApiOrderItem,
   type CheckoutPayload,
 } from '../services/orders.service';
 import { ApiError } from '../../../lib/api/client';
@@ -27,6 +29,7 @@ interface PosState {
   items: PosCartItem[];
   grandTotal: number;
   isCreatingOrder: boolean;
+  isLoadingDraft: boolean;
   isUpdatingItems: boolean;
   isCheckingOut: boolean;
   isCancelling: boolean;
@@ -38,6 +41,15 @@ interface PosState {
    * Returns the active orderId.
    */
   ensureDraftOrder: (token: string) => Promise<string | null>;
+
+  /** Load an existing draft order into the POS session */
+  loadDraftOrder: (token: string, orderId: string) => Promise<boolean>;
+
+  /** Create a brand new draft order, leaving the current one as-is */
+  startNewDraft: (token: string) => Promise<string | null>;
+
+  /** Validate current draft order still exists and is draft */
+  validateDraftOrder: (token: string) => Promise<boolean>;
 
   /**
    * Merge pickedItems into the cart, then sync to backend.
@@ -91,6 +103,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   items: [],
   grandTotal: 0,
   isCreatingOrder: false,
+  isLoadingDraft: false,
   isUpdatingItems: false,
   isCheckingOut: false,
   isCancelling: false,
@@ -113,12 +126,87 @@ export const usePosStore = create<PosState>((set, get) => ({
     }
   },
 
+  loadDraftOrder: async (token, orderId) => {
+    if (!orderId) return false;
+    set({ isLoadingDraft: true, error: null });
+    try {
+      const { order, items } = await getOrderDetail(token, orderId);
+      const mapped = items.map((it: ApiOrderItem) => ({
+        itemId: `si_${it.product_id}`,
+        productId: it.product_id,
+        productName: it.product_name_snapshot,
+        unitPrice: it.unit_price,
+        quantity: it.quantity,
+      }));
+      set({
+        orderId: order.order_id,
+        orderCode: order.order_code,
+        items: mapped,
+        grandTotal: calcTotal(mapped),
+        isLoadingDraft: false,
+      });
+      return true;
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Không thể tải đơn nháp';
+      set({ isLoadingDraft: false, error: msg });
+      return false;
+    }
+  },
+
+  startNewDraft: async (token) => {
+    set({ isCreatingOrder: true, error: null });
+    try {
+      const result = await createDraftOrder(token);
+      const { order_id, order_code } = result.order;
+      set({
+        orderId: order_id,
+        orderCode: order_code,
+        items: [],
+        grandTotal: 0,
+        isCreatingOrder: false,
+      });
+      return order_id;
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Không thể tạo đơn hàng';
+      set({ isCreatingOrder: false, error: msg });
+      return null;
+    }
+  },
+
+  validateDraftOrder: async (token) => {
+    const currentId = get().orderId;
+    if (!currentId) return true;
+
+    set({ isLoadingDraft: true, error: null });
+    try {
+      const { order } = await getOrderDetail(token, currentId);
+      if (order.status !== 'draft') {
+        set({ isLoadingDraft: false });
+        get().resetSession();
+        return false;
+      }
+      set({ isLoadingDraft: false });
+      return true;
+    } catch {
+      set({ isLoadingDraft: false });
+      get().resetSession();
+      return false;
+    }
+  },
+
   addPickedItems: async (token, picked) => {
     // 1. Validate inventory limits against trackInventory rules
     const validationError: string[] = [];
     const current = get().items;
     picked.forEach((p) => {
-      if (!p.trackInventory) return; // no stock limit
+      if (!p.trackInventory) {
+        validationError.push('Sản phẩm tạm hết hàng');
+        return;
+      }
+      if (p.onHand <= 0) {
+        validationError.push('Sản phẩm tạm hết hàng');
+        return;
+      }
       const existingQty = current.find((it) => it.productId === p.productId)?.quantity ?? 0;
       if (existingQty + p.quantity > p.onHand) {
         validationError.push(
@@ -171,6 +259,16 @@ export const usePosStore = create<PosState>((set, get) => ({
     const item = current.find((it) => it.productId === productId);
     if (!item) return;
 
+    if (!trackInventory) {
+      set({ error: 'Sản phẩm tạm hết hàng' });
+      return;
+    }
+
+    if (trackInventory && onHand <= 0) {
+      set({ error: 'Sản phẩm tạm hết hàng' });
+      return;
+    }
+
     if (trackInventory && item.quantity >= onHand) {
       set({ error: `"${item.productName}" chỉ còn ${onHand} trong kho` });
       return;
@@ -204,12 +302,27 @@ export const usePosStore = create<PosState>((set, get) => ({
         it.productId === productId ? { ...it, quantity: it.quantity - 1 } : it,
       )
       .filter((it) => it.quantity > 0);
-    set({ items: next, grandTotal: calcTotal(next) });
 
     const orderId = get().orderId;
-    if (!orderId) return;
+    if (!orderId) {
+      set({ items: next, grandTotal: calcTotal(next) });
+      return;
+    }
 
-    set({ isUpdatingItems: true, error: null });
+    if (next.length === 0) {
+      set({ isCancelling: true, error: null });
+      try {
+        await cancelDraftOrder(token, orderId);
+        set({ isCancelling: false });
+        get().resetSession();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Không thể hủy đơn hàng';
+        set({ isCancelling: false, error: msg });
+      }
+      return;
+    }
+
+    set({ items: next, grandTotal: calcTotal(next), isUpdatingItems: true, error: null });
     try {
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
@@ -224,6 +337,16 @@ export const usePosStore = create<PosState>((set, get) => ({
     const item = current.find((it) => it.productId === productId);
     if (!item) return;
 
+    if (!trackInventory) {
+      set({ error: 'Sản phẩm tạm hết hàng' });
+      return;
+    }
+
+    if (trackInventory && qty > 0 && onHand <= 0) {
+      set({ error: 'Sản phẩm tạm hết hàng' });
+      return;
+    }
+
     if (trackInventory && qty > onHand) {
       set({ error: `"${item.productName}" chỉ còn ${onHand} trong kho` });
       return;
@@ -232,12 +355,27 @@ export const usePosStore = create<PosState>((set, get) => ({
     const next = current
       .map((it) => (it.productId === productId ? { ...it, quantity: qty } : it))
       .filter((it) => it.quantity > 0);
-    set({ items: next, grandTotal: calcTotal(next) });
 
     const orderId = get().orderId;
-    if (!orderId) return;
+    if (!orderId) {
+      set({ items: next, grandTotal: calcTotal(next) });
+      return;
+    }
 
-    set({ isUpdatingItems: true, error: null });
+    if (next.length === 0) {
+      set({ isCancelling: true, error: null });
+      try {
+        await cancelDraftOrder(token, orderId);
+        set({ isCancelling: false });
+        get().resetSession();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Không thể hủy đơn hàng';
+        set({ isCancelling: false, error: msg });
+      }
+      return;
+    }
+
+    set({ items: next, grandTotal: calcTotal(next), isUpdatingItems: true, error: null });
     try {
       await updateOrderItems(token, orderId, buildPayload(next));
       set({ isUpdatingItems: false });
@@ -296,6 +434,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       items: [],
       grandTotal: 0,
       isCreatingOrder: false,
+      isLoadingDraft: false,
       isUpdatingItems: false,
       isCheckingOut: false,
       isCancelling: false,
