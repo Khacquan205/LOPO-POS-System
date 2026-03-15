@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Alert, Modal, View, ScrollView, StyleSheet } from "react-native";
+import {
+  Alert,
+  Modal,
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CommonActions, useNavigation } from "@react-navigation/native";
@@ -18,6 +26,8 @@ import { useCategoriesStore } from "../store/categories.store";
 import { ApiError } from "../../../lib/api/client";
 import { uploadImageToCloudinary } from "../../../lib/cloudinary";
 import { Camera, CameraView } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing } from "../../../ui/theme";
 
 // ============================================================================
 // MAIN SCREEN COMPONENT
@@ -385,14 +395,31 @@ export const CreateProductScreen: React.FC = () => {
         animationType="slide"
         onRequestClose={() => setIsScanningBarcode(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "black" }}>
+        <View style={styles.scanContainer}>
           <CameraView
-            style={{ flex: 1 }}
+            style={styles.scanCamera}
             barcodeScannerSettings={{
               barcodeTypes: ["ean13", "ean8", "upc_e", "upc_a", "code128", "qr"],
             }}
             onBarcodeScanned={({ data }) => handleBarCodeScanned({ data })}
           />
+
+          <View style={styles.scanOverlay} pointerEvents="none">
+            <View style={styles.scanFrame} />
+            <Text style={styles.scanHint}>Đưa mã vạch vào khung để quét</Text>
+          </View>
+
+          <View style={styles.scanTopBar}>
+            <TouchableOpacity
+              style={styles.scanBackButton}
+              onPress={() => setIsScanningBarcode(false)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-back" size={22} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.scanTopTitle}>Quét mã vạch</Text>
+            <View style={styles.scanTopSpacer} />
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -411,5 +438,58 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: "#F6F6F6",
+  },
+  scanContainer: {
+    flex: 1,
+    backgroundColor: colors.black,
+  },
+  scanCamera: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanFrame: {
+    width: "75%",
+    height: 180,
+    borderWidth: 2,
+    borderColor: colors.white,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  scanHint: {
+    marginTop: spacing.lg,
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  scanTopBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  scanBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanTopTitle: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  scanTopSpacer: {
+    width: 40,
   },
 });
