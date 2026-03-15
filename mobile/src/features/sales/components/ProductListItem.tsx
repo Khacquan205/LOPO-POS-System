@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../../ui/theme';
 import type { ProductItemViewModel } from '../../products/store/products.store';
@@ -29,7 +29,15 @@ export const ProductListItem: React.FC<ProductListItemProps> = ({
       <View style={[styles.colorBar, { backgroundColor: product.categoryColor ?? colors.border }]} />
 
       <View style={styles.imageContainer}>
-        <Ionicons name="cube-outline" size={26} color={colors.textSecondary} />
+        {product.image ? (
+          <Image
+            source={{ uri: product.image }}
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Ionicons name="cube-outline" size={26} color={colors.textSecondary} />
+        )}
       </View>
 
       <View style={styles.info}>
@@ -101,6 +109,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
   },
   info: {
     flex: 1,

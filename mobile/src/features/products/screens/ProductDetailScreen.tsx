@@ -29,7 +29,7 @@ import { useAuthStore } from "../../../store/auth.store";
 import { useCategoriesStore } from "../store/categories.store";
 import { useInventoryStore } from "../store/inventory.store";
 
-const HERO_IMAGE_URI =
+const FALLBACK_HERO_IMAGE_URI =
   "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80";
 
 type Props = MainStackScreenProps<"ProductDetail">;
@@ -422,7 +422,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const fetchStockByProduct = useInventoryStore(
     (state) => state.fetchStockByProduct,
   );
-  const [toastVisible, setToastVisible] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
   const [serverProduct, setServerProduct] = useState<
@@ -513,24 +512,8 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     })();
   }, [reloadProductDetail]);
 
-  // Listen for navigation focus to show toast after editing
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (route.params?.edited) {
-        setToastVisible(true);
-        // Clear the flag
-        navigation.setParams({ edited: undefined });
-        // Auto hide after 3 seconds
-        setTimeout(() => {
-          setToastVisible(false);
-        }, 3000);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, route.params]);
-
   const displaySource = serverProduct ?? product;
+  const heroImageUri = displaySource?.image ?? FALLBACK_HERO_IMAGE_URI;
 
   const displayProduct = {
     name: displaySource?.name ?? "Bánh mì",
@@ -548,7 +531,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <View style={styles.container}>
         <View style={styles.heroContainer}>
           <Image
-            source={{ uri: HERO_IMAGE_URI }}
+            source={{ uri: heroImageUri }}
             style={styles.heroImage}
             resizeMode="cover"
           />
@@ -565,12 +548,12 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.infoCard}>
           <TouchableOpacity
             style={styles.menuButton}
-            activeOpacity={1}
+            activeOpacity={0.7}
             onPress={() => setShowActionMenu(true)}
           >
             <Ionicons
               name="ellipsis-vertical"
-              size={44}
+              size={22}
               color={colors.primary}
             />
           </TouchableOpacity>
@@ -612,9 +595,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             />
           </View>
         </View>
-
-        {/* Success Toast */}
-        <SuccessToast visible={toastVisible} message="Chỉnh sửa thành công!" />
 
         {/* Product Action Bottom Sheet */}
         <ProductActionBottomSheet
@@ -723,8 +703,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing.md - spacing.xs,
     right: spacing.md - spacing.xs,
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -734,6 +714,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
     marginBottom: spacing.md,
+    paddingHorizontal: spacing.xxl,
   },
   actionButtonsContainer: {
     flexDirection: "row",

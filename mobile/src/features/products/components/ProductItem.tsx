@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "../../../ui/theme";
 import { formatPrice } from "../../../lib/format";
@@ -13,6 +13,7 @@ interface Product {
   name: string;
   price: number;
   onHand: number;
+  trackInventory: boolean;
   category: string;
   categoryColor: string;
   image?: string;
@@ -69,18 +70,28 @@ export const ProductItem: React.FC<ProductItemProps> = ({
 
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Ionicons
-            name="cube-outline"
-            size={32}
-            color={colors.textSecondary}
-          />
+          {product.image ? (
+            <Image
+              source={{ uri: product.image }}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons
+              name="cube-outline"
+              size={32}
+              color={colors.textSecondary}
+            />
+          )}
         </View>
 
         {/* Product Info */}
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productPrice}>{formatPrice(product.price)}</Text>
-          <Text style={styles.productStock}>Tồn: {product.onHand}</Text>
+          {product.trackInventory && (
+            <Text style={styles.productStock}>Tồn: {product.onHand}</Text>
+          )}
         </View>
       </TouchableOpacity>
       <View
@@ -133,6 +144,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
+  },
+  productImage: {
+    width: "100%",
+    height: "100%",
   },
   productInfo: {
     flex: 1,
