@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,24 +6,24 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { ScreenHeader } from '../../../ui/components';
-import { colors, spacing } from '../../../ui/theme';
+} from "react-native";
+import { ScreenHeader } from "../../../ui/components";
+import { colors, spacing } from "../../../ui/theme";
 import {
   SalesActionButton,
   SelectedProductRow,
   TotalFooter,
-} from '../components';
-import type { SalesOrderItem } from '../components';
-import { CustomerBar } from '../../orders/components';
-import { CustomerPickerBottomSheet } from '../../customers/components';
-import type { Customer } from '../../customers/mock/customers.mock';
-import { usePosStore } from '../store/pos.store';
-import { useProductsStore } from '../../products/store/products.store';
-import { useAuthStore } from '../../../store/auth.store';
-import type { MainStackScreenProps } from '../../../types/navigation';
+} from "../components";
+import type { SalesOrderItem } from "../components";
+import { CustomerBar } from "../../orders/components";
+import { CustomerPickerBottomSheet } from "../../customers/components";
+import type { Customer } from "../../customers/mock/customers.mock";
+import { usePosStore } from "../store/pos.store";
+import { useProductsStore } from "../../products/store/products.store";
+import { useAuthStore } from "../../../store/auth.store";
+import type { MainStackScreenProps } from "../../../types/navigation";
 
-type Props = MainStackScreenProps<'Sales'>;
+type Props = MainStackScreenProps<"Sales">;
 
 export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -39,6 +39,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const isCancelling = usePosStore((s) => s.isCancelling);
   const posError = usePosStore((s) => s.error);
   const clearError = usePosStore((s) => s.clearError);
+  const loadDraftOrder = usePosStore((s) => s.loadDraftOrder);
   const addPickedItems = usePosStore((s) => s.addPickedItems);
   const incrementItem = usePosStore((s) => s.incrementItem);
   const decrementItem = usePosStore((s) => s.decrementItem);
@@ -46,14 +47,26 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const cancelOrder = usePosStore((s) => s.cancel);
   const resetSession = usePosStore((s) => s.resetSession);
 
-  const [customer, setCustomer] = React.useState<Customer | undefined>(undefined);
+  const [customer, setCustomer] = React.useState<Customer | undefined>(
+    undefined,
+  );
   const [showPicker, setShowPicker] = React.useState(false);
 
   // ── Show backend error alerts ─────────────────────────────────
   useEffect(() => {
     if (!posError) return;
-    Alert.alert('Lỗi', posError, [{ text: 'OK', onPress: clearError }]);
+    Alert.alert("Lỗi", posError, [{ text: "OK", onPress: clearError }]);
   }, [posError]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Load selected draft order from Orders screen ──────────────
+  useEffect(() => {
+    const draftOrderId = route.params?.draftOrderId;
+    if (!draftOrderId || !accessToken) return;
+
+    loadDraftOrder(accessToken, draftOrderId).finally(() => {
+      navigation.setParams({ draftOrderId: undefined });
+    });
+  }, [route.params?.draftOrderId, accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Receive pickedItems from ProductPicker ────────────────────
   useEffect(() => {
@@ -101,28 +114,28 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const openProductPicker = useCallback(() => {
     // Use orderId if exists, otherwise pass a placeholder (draft will be created on first add)
-    navigation.navigate('ProductPicker', {
-      orderId: orderId ?? 'new',
-      returnScreen: 'Sales',
+    navigation.navigate("ProductPicker", {
+      orderId: orderId ?? "new",
+      returnScreen: "Sales",
     });
   }, [navigation, orderId]);
 
   const openBarcodeScanner = useCallback(() => {
-    navigation.navigate('ScanProduct', {
+    navigation.navigate("ScanProduct", {
       orderId: orderId ?? undefined,
-      returnScreen: 'Sales',
+      returnScreen: "Sales",
     });
   }, [navigation, orderId]);
 
   const openQuantityEditor = useCallback(
     (item: SalesOrderItem) => {
-      navigation.navigate('QuantityEditor', {
-        orderId: orderId ?? 'new',
+      navigation.navigate("QuantityEditor", {
+        orderId: orderId ?? "new",
         itemId: item.itemId,
         productName: item.productName,
         unitPrice: item.unitPrice,
         currentQty: item.quantity,
-        returnScreen: 'Sales',
+        returnScreen: "Sales",
       });
     },
     [navigation, orderId],
@@ -132,7 +145,12 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
     (item: SalesOrderItem) => {
       if (!accessToken) return;
       const product = allProducts.find((p) => p.id === item.productId);
-      incrementItem(accessToken, item.productId, product?.onHand ?? 0, product?.trackInventory ?? false);
+      incrementItem(
+        accessToken,
+        item.productId,
+        product?.onHand ?? 0,
+        product?.trackInventory ?? false,
+      );
     },
     [accessToken, allProducts, incrementItem],
   );
@@ -147,7 +165,7 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handlePayment = useCallback(() => {
     if (!orderId || !orderCode || posItems.length === 0) return;
-    navigation.navigate('Payment', {
+    navigation.navigate("Payment", {
       orderCode,
       orderId,
       total: grandTotal,
@@ -157,13 +175,13 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleCancelOrder = useCallback(() => {
     if (!orderId || !accessToken) return;
     Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc chắn muốn hủy đơn nháp này không?',
+      "Hủy đơn hàng",
+      "Bạn có chắc chắn muốn hủy đơn nháp này không?",
       [
-        { text: 'Không', style: 'cancel' },
+        { text: "Không", style: "cancel" },
         {
-          text: 'Hủy đơn',
-          style: 'destructive',
+          text: "Hủy đơn",
+          style: "destructive",
           onPress: async () => {
             const ok = await cancelOrder(accessToken);
             if (ok) {
@@ -248,7 +266,11 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       )}
 
       {/* Customer bar */}
-      <CustomerBar customer={customer} isEditable onPress={() => setShowPicker(true)} />
+      <CustomerBar
+        customer={customer}
+        isEditable
+        onPress={() => setShowPicker(true)}
+      />
 
       {/* Total footer / CTA */}
       <TotalFooter
@@ -262,7 +284,10 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       <CustomerPickerBottomSheet
         visible={showPicker}
         onClose={() => setShowPicker(false)}
-        onSelect={(c) => { setCustomer(c); setShowPicker(false); }}
+        onSelect={(c) => {
+          setCustomer(c);
+          setShowPicker(false);
+        }}
       />
     </View>
   );
@@ -274,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
@@ -284,9 +309,9 @@ const styles = StyleSheet.create({
     width: spacing.sm,
   },
   syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.xs,
     backgroundColor: colors.surfaceSecondary,
     gap: spacing.xs,
@@ -297,13 +322,13 @@ const styles = StyleSheet.create({
   },
   empty: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 14,
     color: colors.textSecondary,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   list: {
     flex: 1,

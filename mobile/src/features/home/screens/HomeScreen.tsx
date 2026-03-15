@@ -104,14 +104,19 @@ export const HomeScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <IconSquare icon="storefront" size={48} />
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => navigation.navigate("Profile")}
+            style={styles.storeIconButton}
+          >
+            <IconSquare icon="storefront" size={48} />
+          </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.greeting}>Xin chào!</Text>
             <Text style={styles.userName}>{displayName}</Text>
           </View>
         </View>
 
-       
         {/* Store selector link */}
         <TouchableOpacity
           onPress={() => navigation.navigate("StoreSelector")}
@@ -170,6 +175,9 @@ const styles = StyleSheet.create({
   },
   headerText: {
     marginLeft: spacing.md,
+  },
+  storeIconButton: {
+    borderRadius: 12,
   },
   greeting: {
     ...typography.body,

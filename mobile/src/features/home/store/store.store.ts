@@ -3,6 +3,7 @@ import type { StoreItem } from "../services/store.service";
 import {
   getMyStores as apiGetMyStores,
   selectStore as apiSelectStore,
+  createStore as apiCreateStore,
 } from "../services/store.service";
 import { useAuthStore } from "../../../store/auth.store";
 
@@ -12,6 +13,7 @@ interface StoreState {
   error: string | null;
   fetchMyStores: () => Promise<void>;
   selectStore: (storeId: string) => Promise<void>;
+  createStore: (name: string) => Promise<boolean>;
 }
 
 export const useStoreStore = create<StoreState>((set, get) => ({
@@ -64,6 +66,22 @@ export const useStoreStore = create<StoreState>((set, get) => ({
       }
     } catch (err: any) {
       set({ error: err.message ?? "Lỗi chọn cửa hàng", isLoading: false });
+    }
+  },
+
+  createStore: async (name: string) => {
+    const token = useAuthStore.getState().accessToken;
+    if (!token) return false;
+
+    set({ isLoading: true, error: null });
+    try {
+      await apiCreateStore(token, name);
+      const stores = await apiGetMyStores(token);
+      set({ stores, isLoading: false });
+      return true;
+    } catch (err: any) {
+      set({ error: err.message ?? "Lỗi tạo cửa hàng", isLoading: false });
+      return false;
     }
   },
 }));

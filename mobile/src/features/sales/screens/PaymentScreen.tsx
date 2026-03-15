@@ -26,11 +26,13 @@ import { PaymentSuccessModal, TransferQrCard } from "../components";
 import { usePosStore } from "../store/pos.store";
 import { checkoutOrder } from "../services/orders.service";
 import { useAuthStore } from "../../../store/auth.store";
+import { ApiError } from "../../../lib/api/client";
 import type { MainStackScreenProps } from "../../../types/navigation";
 
 type Props = MainStackScreenProps<"Payment">;
 
 type PaymentMethod = "cash" | "transfer";
+type ApiPaymentMethod = "cash" | "bank_transfer";
 
 const METHODS: {
   id: PaymentMethod;
@@ -42,6 +44,9 @@ const METHODS: {
 ];
 
 const formatAmount = (amount: number) => formatCurrencyVND(amount);
+
+const toApiPaymentMethod = (method: PaymentMethod): ApiPaymentMethod =>
+  method === "transfer" ? "bank_transfer" : "cash";
 
 const TRANSFER_ACCOUNT = {
   accountName: "NGUYEN KHAC QUAN",
@@ -125,10 +130,12 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     if (!accessToken) return;
 
+    const apiPaymentMethod = toApiPaymentMethod(method);
+
     if (orderId === posOrderId) {
       // Current POS session -> use posStore (handles its own loading state)
       const ok = await checkout(accessToken, {
-        payment_method: method,
+        payment_method: apiPaymentMethod,
         payment_status: "paid",
       });
       if (ok) {
@@ -146,14 +153,18 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       setIsCheckingOutDirect(true);
       try {
         await checkoutOrder(accessToken, orderId, {
-          payment_method: method,
+          payment_method: apiPaymentMethod,
           payment_status: "paid",
         });
         setShowSuccess(true);
       } catch (err) {
         Alert.alert(
           "Thanh toán thất bại",
-          err instanceof Error ? err.message : "Có lỗi xảy ra",
+          err instanceof ApiError
+            ? err.getFieldErrors() || err.message
+            : err instanceof Error
+              ? err.message
+              : "Có lỗi xảy ra",
         );
       } finally {
         setIsCheckingOutDirect(false);
