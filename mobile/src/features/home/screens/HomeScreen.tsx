@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Modal,
 } from "react-native";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -16,12 +17,15 @@ import { useAuthStore } from "../../../store/auth.store";
 import { useStoreStore } from "../store/store.store";
 import type { MainStackParamList } from "../../../types/navigation";
 
+// ── Types ──────────────────────────────────────────────────────
+
 type FeatureKey =
   | "sales"
   | "orders"
   | "products"
   | "customers"
   | "staff"
+  | "jobApplications"
   | "settings"
   | "support"
   | "notifications";
@@ -33,6 +37,8 @@ interface GridItem {
   badge?: string;
 }
 
+// ── Constants ──────────────────────────────────────────────────
+
 const GRID_ITEMS: GridItem[] = [
   { key: "sales", title: "Bán hàng", icon: "cart" },
   { key: "orders", title: "Đơn hàng", icon: "receipt" },
@@ -41,12 +47,7 @@ const GRID_ITEMS: GridItem[] = [
   { key: "staff", title: "Nhân viên", icon: "person" },
   { key: "settings", title: "Cài đặt", icon: "settings" },
   { key: "support", title: "Hỗ trợ", icon: "headset" },
-  {
-    key: "notifications",
-    title: "Thông báo",
-    icon: "notifications",
-    badge: "1",
-  },
+  { key: "notifications", title: "Thông báo", icon: "notifications", badge: "1" },
 ];
 
 const ROUTE_MAP: Record<FeatureKey, keyof MainStackParamList> = {
@@ -55,10 +56,13 @@ const ROUTE_MAP: Record<FeatureKey, keyof MainStackParamList> = {
   products: "Products",
   customers: "Customers",
   staff: "Staff",
+  jobApplications: "JobApplications",
   settings: "Settings",
   support: "Support",
   notifications: "Notifications",
 };
+
+// ── Component ──────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
   const navigation =
@@ -68,11 +72,22 @@ export const HomeScreen: React.FC = () => {
   const activeStore = useStoreStore((s) => s.stores.find((st) => st.is_active));
   const fetchMyStores = useStoreStore((s) => s.fetchMyStores);
 
+  const [showNoStoreModal, setShowNoStoreModal] = useState(false);
+
   useEffect(() => {
     fetchMyStores();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayName = user?.name?.toUpperCase() || "NGƯỜI DÙNG";
+  const isStaff = user?.role === "staff";
+  // Staff chưa được approve vào cửa hàng nào (storeId === null)
+  const staffHasNoStore = isStaff && !user?.storeId;
+
+  const gridItems = GRID_ITEMS.map((item) =>
+    item.key === "staff" && isStaff
+      ? { ...item, key: "jobApplications" as FeatureKey, title: "Việc làm" }
+      : item,
+  );
 
   const handleLogout = (): void => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -93,6 +108,11 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleGridPress = (key: FeatureKey): void => {
+    // Nếu staff chưa có cửa hàng và không phải Việc làm → show modal cảnh báo
+    if (staffHasNoStore && key !== "jobApplications") {
+      setShowNoStoreModal(true);
+      return;
+    }
     const routeName = ROUTE_MAP[key];
     if (routeName) {
       navigation.navigate(routeName as never);
@@ -131,7 +151,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* Grid 2x4 */}
         <View style={styles.gridContainer}>
-          {GRID_ITEMS.map((item) => (
+          {gridItems.map((item) => (
             <View key={item.key} style={styles.gridItemWrapper}>
               <GridButton
                 title={item.title}
@@ -162,9 +182,64 @@ export const HomeScreen: React.FC = () => {
           <Text style={styles.logoutLink}>Đăng xuất</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── Modal: Chưa có cửa hàng ──────────────────────── */}
+      <Modal
+        visible={showNoStoreModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNoStoreModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          {/* Backdrop tap to close */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowNoStoreModal(false)}
+          />
+
+          <View style={styles.modalCard}>
+            {/* Icon cam với hào quang */}
+            <View style={styles.iconGlow}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.iconText}>i</Text>
+              </View>
+            </View>
+
+            <Text style={styles.modalTitle}>Chưa có cửa hàng</Text>
+
+            <Text style={styles.modalDesc}>
+              Bạn cần tham gia cửa hàng để có chức năng này
+            </Text>
+
+            {/* Nút chính */}
+            <TouchableOpacity
+              style={styles.btnJoin}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowNoStoreModal(false);
+                navigation.navigate("JobApplications");
+              }}
+            >
+              <Text style={styles.btnJoinText}>Tham gia cửa hàng</Text>
+            </TouchableOpacity>
+
+            {/* Nút phụ */}
+            <TouchableOpacity
+              style={styles.btnDismiss}
+              activeOpacity={0.85}
+              onPress={() => setShowNoStoreModal(false)}
+            >
+              <Text style={styles.btnDismissText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 };
+
+// ── Styles ─────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   header: {
@@ -233,5 +308,94 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.linkOrange,
     marginLeft: spacing.xs,
+  },
+
+  // ── Modal ──────────────────────────────────────────────
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    width: "100%",
+    maxWidth: 320,
+    alignItems: "center",
+    // Đảm bảo card nổi trên backdrop tap
+    zIndex: 1,
+  },
+  // Hào quang màu cam nhạt bên ngoài
+  iconGlow: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "rgba(239,164,66,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  // Vòng tròn màu cam đậm
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.linkOrange,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Chữ "i" in nghiêng màu trắng
+  iconText: {
+    fontSize: 30,
+    fontWeight: "900",
+    fontStyle: "italic",
+    color: colors.white,
+    lineHeight: 36,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.linkOrange,
+    marginBottom: spacing.sm,
+    textAlign: "center",
+  },
+  modalDesc: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  btnJoin: {
+    width: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  btnJoinText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  btnDismiss: {
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+  },
+  btnDismissText: {
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

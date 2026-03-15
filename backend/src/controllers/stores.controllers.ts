@@ -79,3 +79,21 @@ export const createStoreController = async (req: Request, res: Response) => {
     result
   })
 }
+
+export const getMyJoinRequestsController = async (req: Request, res: Response) => {
+  const user_id = String(req.decoded_authorization?.user_id || '')
+  const result = await storesService.getMyJoinRequests(user_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: STORES_MESSAGES.GET_MY_JOIN_REQUESTS_SUCCESS,
+    result
+  })
+}
+
+export const getStorePreviewByQrController = async (req: Request, res: Response) => {
+  const qr_code = String(req.query.qr_code || '')
+  const result = await storesService.getStorePreviewByQr(qr_code)
+  return res.status(HTTP_STATUS.OK).json({
+    message: STORES_MESSAGES.GET_STORE_PREVIEW_SUCCESS,
+    result
+  })
+}
