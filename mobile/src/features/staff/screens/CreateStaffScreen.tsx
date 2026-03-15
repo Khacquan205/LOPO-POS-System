@@ -1,43 +1,94 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Modal, Pressable,
+  StyleSheet, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
+import { ApiError } from '../../../lib/api/client';
+import { useAuthStore } from '../../../store/auth.store';
 import { useStaffStore } from '../store/staff.store';
+import { createOwnerStaff } from '../services/staff.service';
 import { useToast } from '../../../ui/components/ToastContext';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'CreateStaff'>;
 
 export const CreateStaffScreen: React.FC<Props> = ({ navigation }) => {
-  const addStaff = useStaffStore((s) => s.addStaff);
-  const { showSuccessToast } = useToast();
+  const fetchStaffList = useStaffStore((s) => s.fetchStaffList);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { showSuccessToast, showErrorToast } = useToast();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phoneError, setPhoneError] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [sheetVisible, setSheetVisible] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isPhoneValid = (val: string): boolean => /^\d{10}$/.test(val.trim());
+  const isPhoneValid = (val: string): boolean => /^0\d{9}$/.test(val.trim());
+  const isPasswordValid = (val: string): boolean =>
+    /[A-Z]/.test(val) && /[a-z]/.test(val) && /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val);
 
   const handlePhoneChange = (val: string): void => {
     setPhone(val);
     if (val.trim() && !isPhoneValid(val)) {
-      setPhoneError('Số điện thoại phải đủ 10 chữ số');
+      setPhoneError('Số điện thoại phải có 10 chữ số và bắt đầu bằng số 0');
     } else {
       setPhoneError('');
     }
   };
 
-  const handleCreate = (): void => {
+  const handleConfirmPasswordChange = (val: string): void => {
+    setConfirmPassword(val);
+    if (val && val !== password) {
+      setConfirmPasswordError('Mật khẩu xác nhận không khớp');
+    } else {
+      setConfirmPasswordError('');
+    }
+  };
+
+  const handleCreate = async (): Promise<void> => {
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại');
+      return;
+    }
+
     if (!name.trim() || !isPhoneValid(phone)) return;
-    addStaff({ name: name.trim(), phone: phone.trim(), isActive });
-    showSuccessToast('Tạo mới thành công!');
-    navigation.navigate('Staff');
+    if (!isPasswordValid(password)) {
+      showErrorToast('Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setConfirmPasswordError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createOwnerStaff(accessToken, {
+        full_name: name.trim(),
+        phone_number: phone.trim(),
+        password,
+        confirm_password: confirmPassword,
+      });
+
+      await fetchStaffList(accessToken);
+      showSuccessToast('Tạo tài khoản nhân viên thành công!');
+      navigation.navigate('Staff');
+    } catch (error) {
+      if (error instanceof ApiError) {
+        showErrorToast(error.getFieldErrors() || error.message);
+      } else if (error instanceof Error) {
+        showErrorToast(error.message);
+      } else {
+        showErrorToast('Không thể tạo tài khoản nhân viên');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = (): void => {
@@ -77,46 +128,32 @@ export const CreateStaffScreen: React.FC<Props> = ({ navigation }) => {
         />
         {!!phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
 
-        {/* Trạng thái */}
-        <Text style={styles.label}>Trạng thái</Text>
-        <TouchableOpacity
-          style={styles.dropdown}
-          onPress={() => setSheetVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.dropdownText}>
-            {isActive ? 'Đang hoạt động' : 'Ngưng hoạt động'}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.label}>
+          Mật khẩu <Text style={styles.required}>*</Text>
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Nhập mật khẩu"
+          placeholderTextColor={colors.textSecondary}
+          secureTextEntry
+          autoCapitalize="none"
+        />
 
-        {/* Bottom sheet modal */}
-        <Modal
-          visible={sheetVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setSheetVisible(false)}
-        >
-          <Pressable style={styles.backdrop} onPress={() => setSheetVisible(false)} />
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>CHỌN TRẠNG THÁI</Text>
-            {[true, false].map((val) => (
-              <TouchableOpacity
-                key={String(val)}
-                style={styles.sheetOption}
-                onPress={() => { setIsActive(val); setSheetVisible(false); }}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.sheetOptionText,
-                  isActive === val && styles.sheetOptionActive,
-                ]}>
-                  {val ? 'Đang hoạt động' : 'Ngưng hoạt động'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Modal>
+        <Text style={styles.label}>
+          Xác nhận mật khẩu <Text style={styles.required}>*</Text>
+        </Text>
+        <TextInput
+          style={[styles.input, confirmPasswordError ? styles.inputError : null]}
+          value={confirmPassword}
+          onChangeText={handleConfirmPasswordChange}
+          placeholder="Nhập lại mật khẩu"
+          placeholderTextColor={colors.textSecondary}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+        {!!confirmPasswordError && <Text style={styles.errorText}>{confirmPasswordError}</Text>}
 
       </ScrollView>
 
@@ -127,11 +164,16 @@ export const CreateStaffScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.cancelText}>Hủy</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.createBtn, (!name.trim() || !isPhoneValid(phone)) && styles.createBtnDisabled]}
+          style={[
+            styles.createBtn,
+            (!name.trim() || !isPhoneValid(phone) || !password || !confirmPassword || isSubmitting)
+              && styles.createBtnDisabled,
+          ]}
           onPress={handleCreate}
+          disabled={isSubmitting}
           activeOpacity={0.8}
         >
-          <Text style={styles.createText}>Tạo mới</Text>
+          <Text style={styles.createText}>{isSubmitting ? 'Đang tạo...' : 'Tạo mới'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -172,52 +214,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.error,
     marginTop: 4,
-  },
-  dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  dropdownText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  sheetTitle: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 15,
-    marginBottom: spacing.sm,
-  },
-  sheetOption: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  sheetOptionText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  sheetOptionActive: {
-    color: colors.primary,
-    fontWeight: '600',
   },
   footer: {
     paddingHorizontal: spacing.md,
