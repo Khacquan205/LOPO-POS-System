@@ -68,3 +68,54 @@ export async function createStore(
   });
   return data.result;
 }
+
+interface UpdateStoreNameResponse {
+  message: string;
+  result: {
+    store_id: string;
+    name: string;
+    owner_id: string;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+/** PATCH /users/owner/stores/:store_id — đổi tên cửa hàng */
+export async function updateStoreName(
+  token: string,
+  storeId: string,
+  name: string,
+): Promise<UpdateStoreNameResponse["result"]> {
+  const data = await apiRequest<UpdateStoreNameResponse>(
+    `/users/owner/stores/${storeId}`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ name }),
+    },
+  );
+  return data.result;
+}
+
+interface DeleteStoreResponse {
+  message: string;
+  result: {
+    deleted_store_id: string;
+    new_active_store_id?: string | null;
+  };
+}
+
+/** DELETE /users/owner/stores/:store_id — xóa cửa hàng */
+export async function deleteStore(
+  token: string,
+  storeId: string,
+): Promise<DeleteStoreResponse["result"]> {
+  const data = await apiRequest<DeleteStoreResponse>(
+    `/users/owner/stores/${storeId}`,
+    {
+      method: "DELETE",
+      token,
+    },
+  );
+  return data.result;
+}

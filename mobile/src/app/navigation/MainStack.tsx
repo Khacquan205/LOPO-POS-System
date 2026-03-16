@@ -22,6 +22,9 @@ import { EditStaffScreen } from "../../features/staff/screens/EditStaffScreen";
 import { CreateStaffScreen } from "../../features/staff/screens/CreateStaffScreen";
 import { StaffApprovalScreen } from "../../features/staff/screens/StaffApprovalScreen";
 import { StaffApprovalDetailScreen } from "../../features/staff/screens/StaffApprovalDetailScreen";
+import { JobApplicationsScreen } from "../../features/staff/screens/JobApplicationsScreen";
+import { ScanQrJobScreen } from "../../features/staff/screens/ScanQrJobScreen";
+import { QrJobConfirmScreen } from "../../features/staff/screens/QrJobConfirmScreen";
 import { SettingsScreen } from "../../features/settings/screens/SettingsScreen";
 import { SupportScreen } from "../../features/support/screens/SupportScreen";
 import { NotificationsScreen } from "../../features/notifications/screens/NotificationsScreen";
@@ -75,6 +78,13 @@ export const MainStack: React.FC = () => {
       <Stack.Screen
         name="StaffApprovalDetail"
         component={StaffApprovalDetailScreen}
+      />
+      <Stack.Screen name="JobApplications" component={JobApplicationsScreen} />
+      <Stack.Screen name="ScanQrJob" component={ScanQrJobScreen} />
+      <Stack.Screen
+        name="QrJobConfirm"
+        component={QrJobConfirmScreen}
+        options={{ gestureEnabled: false }}
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />

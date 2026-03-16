@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ScrollView, Modal, Pressable,
+  View, Text, TouchableOpacity,
+  StyleSheet, ScrollView, Modal, Pressable, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { useStaffStore } from '../store/staff.store';
+import { useAuthStore } from '../../../store/auth.store';
 import { useToast } from '../../../ui/components/ToastContext';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
@@ -15,25 +16,13 @@ type Props = MainStackScreenProps<'EditStaff'>;
 export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
   const { staffId } = route.params;
   const staff = useStaffStore((s) => s.staffList.find((x) => x.id === staffId));
-  const updateStaff = useStaffStore((s) => s.updateStaff);
-  const { showSuccessToast } = useToast();
+  const updateStaffStatusApi = useStaffStore((s) => s.updateStaffStatusApi);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { showSuccessToast, showErrorToast } = useToast();
 
-  const [name, setName] = useState(staff?.name ?? '');
-  const [phone, setPhone] = useState(staff?.phone ?? '');
-  const [phoneError, setPhoneError] = useState('');
   const [isActive, setIsActive] = useState(staff?.isActive ?? true);
   const [sheetVisible, setSheetVisible] = useState(false);
-
-  const isPhoneValid = (val: string): boolean => /^\d{10}$/.test(val.trim());
-
-  const handlePhoneChange = (val: string): void => {
-    setPhone(val);
-    if (val.trim() && !isPhoneValid(val)) {
-      setPhoneError('Số điện thoại phải đủ 10 chữ số');
-    } else {
-      setPhoneError('');
-    }
-  };
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!staff) {
     return (
@@ -44,11 +33,28 @@ export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  const handleSave = (): void => {
-    if (!name.trim() || !isPhoneValid(phone)) return;
-    updateStaff(staffId, { name: name.trim(), phone: phone.trim(), isActive });
-    showSuccessToast('Chỉnh sửa thành công!');
-    navigation.navigate('Staff');
+  const hasChanged = isActive !== staff.isActive;
+
+  const handleSave = async (): Promise<void> => {
+    if (!hasChanged) {
+      navigation.goBack();
+      return;
+    }
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateStaffStatusApi(accessToken, staffId, isActive ? 'active' : 'inactive');
+      showSuccessToast('Cập nhật trạng thái thành công!');
+      navigation.navigate('Staff');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Cập nhật thất bại';
+      showErrorToast(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = (): void => {
@@ -61,47 +67,32 @@ export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
 
-        {/* Tên nhân viên */}
-        <Text style={styles.label}>
-          Tên nhân viên <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Nhập tên nhân viên"
-          placeholderTextColor={colors.textSecondary}
-        />
+        {/* Tên nhân viên (read-only) */}
+        <Text style={styles.label}>Tên nhân viên</Text>
+        <View style={styles.readonlyBox}>
+          <Text style={styles.readonlyText}>{staff.name}</Text>
+        </View>
 
-        {/* Số điện thoại */}
-        <Text style={styles.label}>
-          Số điện thoại <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, phoneError ? styles.inputError : null]}
-          value={phone}
-          onChangeText={handlePhoneChange}
-          placeholder="Nhập số điện thoại"
-          placeholderTextColor={colors.textSecondary}
-          keyboardType="phone-pad"
-          maxLength={10}
-        />
-        {!!phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+        {/* Số điện thoại (read-only) */}
+        <Text style={styles.label}>Số điện thoại</Text>
+        <View style={styles.readonlyBox}>
+          <Text style={styles.readonlyText}>{staff.phone}</Text>
+        </View>
 
-        {/* Trạng thái */}
+        {/* Trạng thái — có thể thay đổi */}
         <Text style={styles.label}>Trạng thái</Text>
         <TouchableOpacity
           style={styles.dropdown}
           onPress={() => setSheetVisible(true)}
           activeOpacity={0.8}
         >
-          <Text style={styles.dropdownText}>
+          <Text style={[styles.dropdownText, isActive ? styles.textActive : styles.textInactive]}>
             {isActive ? 'Đang hoạt động' : 'Ngưng hoạt động'}
           </Text>
           <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        {/* Bottom sheet modal */}
+        {/* Bottom sheet chọn trạng thái */}
         <Modal
           visible={sheetVisible}
           transparent
@@ -111,7 +102,7 @@ export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
           <Pressable style={styles.backdrop} onPress={() => setSheetVisible(false)} />
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>CHỌN TRẠNG THÁI</Text>
-            {[true, false].map((val) => (
+            {([true, false] as const).map((val) => (
               <TouchableOpacity
                 key={String(val)}
                 style={styles.sheetOption}
@@ -124,6 +115,9 @@ export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
                 ]}>
                   {val ? 'Đang hoạt động' : 'Ngưng hoạt động'}
                 </Text>
+                {isActive === val && (
+                  <Ionicons name="checkmark" size={18} color={colors.primary} />
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -133,12 +127,20 @@ export const EditStaffScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.7} disabled={isSaving}>
           <Ionicons name="close-circle" size={18} color={colors.secondary} />
           <Text style={styles.cancelText}>Hủy</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.saveBtn, (!name.trim() || !isPhoneValid(phone)) && styles.saveBtnDisabled]} onPress={handleSave} activeOpacity={0.8}>
-          <Text style={styles.saveText}>Lưu</Text>
+        <TouchableOpacity
+          style={[styles.saveBtn, (isSaving || !hasChanged) && styles.saveBtnDisabled]}
+          onPress={handleSave}
+          activeOpacity={0.8}
+          disabled={isSaving || !hasChanged}
+        >
+          {isSaving
+            ? <ActivityIndicator size="small" color={colors.white} />
+            : <Text style={styles.saveText}>{hasChanged ? 'Lưu' : 'Không có thay đổi'}</Text>
+          }
         </TouchableOpacity>
       </View>
     </View>
@@ -162,29 +164,21 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.caption,
-    color: colors.textPrimary,
+    color: colors.textSecondary,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
-  required: {
-    color: colors.error,
-  },
-  input: {
+  readonlyBox: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: '#F8F9FA',
+  },
+  readonlyText: {
     ...typography.body,
     color: colors.textPrimary,
-  },
-  inputError: {
-    borderColor: colors.error,
-  },
-  errorText: {
-    ...typography.caption,
-    color: colors.error,
-    marginTop: 4,
   },
   dropdown: {
     flexDirection: 'row',
@@ -194,11 +188,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
   },
   dropdownText: {
     ...typography.body,
-    color: colors.textPrimary,
+  },
+  textActive: {
+    color: colors.success,
+    fontWeight: '600',
+  },
+  textInactive: {
+    color: colors.textSecondary,
   },
   backdrop: {
     flex: 1,
@@ -220,6 +220,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sheetOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -257,7 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   saveText: {
     ...typography.body,

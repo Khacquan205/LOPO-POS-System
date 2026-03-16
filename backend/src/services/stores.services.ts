@@ -81,6 +81,34 @@ class StoresService {
     }
   }
 
+  async getStorePreviewByQr(qr_code: string) {
+    const trimmedQrCode = qr_code.trim()
+    const parsedId = Types.ObjectId.isValid(trimmedQrCode) ? new Types.ObjectId(trimmedQrCode) : null
+
+    const store = await Store.findOne(
+      parsedId
+        ? { $or: [{ qr_code: trimmedQrCode }, { store_id: parsedId }, { _id: parsedId }] }
+        : { qr_code: trimmedQrCode }
+    )
+
+    if (!store) {
+      throw new ErrorWithStatus({
+        message: STORES_MESSAGES.STORE_NOT_FOUND_BY_QR,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    // Lấy thông tin chủ cửa hàng
+    const owner = await User.findById(store.owner_id).select('full_name phone_number')
+
+    return {
+      store_id: String((store as any).store_id ?? store._id),
+      store_name: store.name,
+      owner_name: owner?.full_name ?? null,
+      owner_phone: owner?.phone_number ?? null
+    }
+  }
+
   async requestJoinStoreByQr(staff_user_id: string, qr_code: string) {
     const staff = await this.getUserById(staff_user_id)
     if (staff.role !== UserRole.Staff) {
@@ -90,12 +118,7 @@ class StoresService {
       })
     }
 
-    if (staff.store_id) {
-      throw new ErrorWithStatus({
-        message: STORES_MESSAGES.STAFF_ALREADY_IN_STORE,
-        status: HTTP_STATUS.CONFLICT
-      })
-    }
+    // Cho phép staff xin việc tại nhiều cửa hàng — không block dựa trên store_id hiện tại
 
     const trimmedQrCode = qr_code.trim()
     const parsedId = Types.ObjectId.isValid(trimmedQrCode) ? new Types.ObjectId(trimmedQrCode) : null
@@ -124,6 +147,19 @@ class StoresService {
     if (hasPending) {
       throw new ErrorWithStatus({
         message: STORES_MESSAGES.STAFF_JOIN_REQUEST_ALREADY_PENDING,
+        status: HTTP_STATUS.CONFLICT
+      })
+    }
+
+    // Kiểm tra đã là thành viên của cửa hàng này chưa
+    const isAlreadyMember = await UserStore.exists({
+      user_id: staff._id,
+      store_id: store._id
+    })
+
+    if (isAlreadyMember) {
+      throw new ErrorWithStatus({
+        message: STORES_MESSAGES.STAFF_ALREADY_MEMBER_OF_THIS_STORE,
         status: HTTP_STATUS.CONFLICT
       })
     }
@@ -203,15 +239,11 @@ class StoresService {
       })
     }
 
-    if (staff.store_id && String(staff.store_id) !== String(store._id)) {
-      throw new ErrorWithStatus({
-        message: STORES_MESSAGES.STAFF_ALREADY_IN_STORE,
-        status: HTTP_STATUS.CONFLICT
-      })
+    // Multi-store: chỉ set store_id nếu staff chưa có store nào (giữ active store hiện tại)
+    if (!staff.store_id) {
+      staff.store_id = store._id as any
+      await staff.save()
     }
-
-    staff.store_id = store._id as any
-    await staff.save()
 
     // Auto-populate UserStore junction
     await UserStore.findOneAndUpdate(
@@ -392,7 +424,47 @@ class StoresService {
       role: membership.role
     }
   }
+
+  async getMyJoinRequests(staff_user_id: string) {
+    const parsedStaffId = new Types.ObjectId(staff_user_id)
+
+    // Tìm tất cả stores có join_request của staff này
+    const stores = await Store.find({
+      'join_requests.staff_user_id': parsedStaffId
+    }).select('store_id name join_requests owner_id')
+
+    const results: {
+      request_id: string
+      store_id: string
+      store_name: string
+      status: string
+      requested_at: Date
+      reviewed_at: Date | null
+    }[] = []
+
+    for (const store of stores) {
+      const myRequests = (store.join_requests || []).filter(
+        (req) => String(req.staff_user_id) === String(parsedStaffId)
+      )
+      for (const req of myRequests) {
+        results.push({
+          request_id: String(req.request_id),
+          store_id: String((store as any).store_id ?? store._id),
+          store_name: store.name,
+          status: req.status,
+          requested_at: req.requested_at,
+          reviewed_at: req.reviewed_at ?? null
+        })
+      }
+    }
+
+    // Sắp xếp mới nhất trước
+    results.sort((a, b) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime())
+
+    return results
+  }
 }
 
 const storesService = new StoresService()
 export default storesService
+

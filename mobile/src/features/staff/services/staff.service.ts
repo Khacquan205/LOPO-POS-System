@@ -16,6 +16,42 @@ interface OwnerStaffListResponse {
   result: OwnerStaffItem[];
 }
 
+export interface PendingJoinRequestItem {
+  request_id: string;
+  staff_user_id?: string;
+  staff_full_name?: string;
+  staff_phone_number?: string;
+  status?: string;
+  rejected_count?: number;
+  requested_at?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface PendingJoinRequestsResponse {
+  message: string;
+  result: PendingJoinRequestItem[];
+}
+
+interface ApproveJoinRequestResponse {
+  message: string;
+  result: {
+    request_id: string;
+    status: 'approved';
+    staff_user_id: string;
+    store_id: string;
+    store_name: string;
+  };
+}
+
+interface RejectJoinRequestResponse {
+  message: string;
+  result: {
+    request_id: string;
+    status: 'rejected';
+  };
+}
+
 interface CreateOwnerStaffRequest {
   full_name: string;
   phone_number: string;
@@ -48,6 +84,45 @@ export async function getOwnerStaffList(accessToken: string): Promise<OwnerStaff
   return Array.isArray(data.result) ? data.result : [];
 }
 
+export async function getPendingJoinRequests(accessToken: string): Promise<PendingJoinRequestItem[]> {
+  const data = await apiRequest<PendingJoinRequestsResponse>('/stores/join-requests/pending', {
+    method: 'GET',
+    token: accessToken,
+  });
+
+  return Array.isArray(data.result) ? data.result : [];
+}
+
+export async function approveJoinRequest(
+  accessToken: string,
+  requestId: string,
+): Promise<ApproveJoinRequestResponse['result']> {
+  const data = await apiRequest<ApproveJoinRequestResponse>(
+    `/stores/join-requests/${encodeURIComponent(requestId)}/approve`,
+    {
+      method: 'POST',
+      token: accessToken,
+    },
+  );
+
+  return data.result;
+}
+
+export async function rejectJoinRequest(
+  accessToken: string,
+  requestId: string,
+): Promise<RejectJoinRequestResponse['result']> {
+  const data = await apiRequest<RejectJoinRequestResponse>(
+    `/stores/join-requests/${encodeURIComponent(requestId)}/reject`,
+    {
+      method: 'POST',
+      token: accessToken,
+    },
+  );
+
+  return data.result;
+}
+
 export async function createOwnerStaff(
   accessToken: string,
   payload: CreateOwnerStaffRequest,
@@ -58,5 +133,47 @@ export async function createOwnerStaff(
     body: JSON.stringify(payload),
   });
 
+  return data.result;
+}
+
+interface UpdateStaffStatusResponse {
+  message: string;
+  result: OwnerStaffItem;
+}
+
+/** PATCH /users/owner/staff/:staff_id/status — đổi trạng thái active/inactive */
+export async function updateStaffStatus(
+  accessToken: string,
+  staffId: string,
+  status: 'active' | 'inactive',
+): Promise<OwnerStaffItem> {
+  const data = await apiRequest<UpdateStaffStatusResponse>(
+    `/users/owner/staff/${staffId}/status`,
+    {
+      method: 'PATCH',
+      token: accessToken,
+      body: JSON.stringify({ status }),
+    },
+  );
+  return data.result;
+}
+
+interface DeleteStaffResponse {
+  message: string;
+  result: { deleted_staff_id: string };
+}
+
+/** DELETE /users/owner/staff/:staff_id — xóa nhân viên khỏi hệ thống */
+export async function deleteStaff(
+  accessToken: string,
+  staffId: string,
+): Promise<{ deleted_staff_id: string }> {
+  const data = await apiRequest<DeleteStaffResponse>(
+    `/users/owner/staff/${staffId}`,
+    {
+      method: 'DELETE',
+      token: accessToken,
+    },
+  );
   return data.result;
 }

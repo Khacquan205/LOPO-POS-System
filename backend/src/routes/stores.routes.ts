@@ -5,6 +5,8 @@ import {
   createStoreController,
   generateStoreQrController,
   getMyStoresController,
+  getMyJoinRequestsController,
+  getStorePreviewByQrController,
   getPendingJoinRequestsController,
   rejectJoinRequestController,
   requestJoinStoreByQrController,
@@ -60,5 +62,9 @@ storesRouter.post(
 storesRouter.get('/my-stores', accessTokenValidator, wrapRequestHandler(getMyStoresController))
 // Multi-store: switch active store
 storesRouter.post('/select', accessTokenValidator, selectStoreValidator, wrapRequestHandler(selectStoreController))
+// Staff: xem danh sách yêu cầu xin việc của bản thân
+storesRouter.get('/my-join-requests', accessTokenValidator, wrapRequestHandler(getMyJoinRequestsController))
+// Staff: xem trước thông tin cửa hàng theo QR (không submit request)
+storesRouter.get('/preview-by-qr', accessTokenValidator, wrapRequestHandler(getStorePreviewByQrController))
 
 export default storesRouter

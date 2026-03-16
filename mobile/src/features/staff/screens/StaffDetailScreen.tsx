@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { useStaffStore } from '../store/staff.store';
+import { useAuthStore } from '../../../store/auth.store';
 import { useToast } from '../../../ui/components/ToastContext';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
@@ -12,9 +13,11 @@ type Props = MainStackScreenProps<'StaffDetail'>;
 export const StaffDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { staffId } = route.params;
   const staff = useStaffStore((s) => s.staffList.find((x) => x.id === staffId));
-  const removeStaff = useStaffStore((s) => s.removeStaff);
-  const { showSuccessToast } = useToast();
+  const deleteStaffApi = useStaffStore((s) => s.deleteStaffApi);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { showSuccessToast, showErrorToast } = useToast();
   const [deleteVisible, setDeleteVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!staff) {
     return (
@@ -29,11 +32,24 @@ export const StaffDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setDeleteVisible(true);
   };
 
-  const confirmDelete = (): void => {
-    setDeleteVisible(false);
-    removeStaff(staffId);
-    showSuccessToast('Xóa thành công!');
-    navigation.navigate('Staff');
+  const confirmDelete = async (): Promise<void> => {
+    if (!accessToken) {
+      Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteStaffApi(accessToken, staffId);
+      setDeleteVisible(false);
+      showSuccessToast(`Đã xóa nhân viên ${staff.name} khỏi hệ thống!`);
+      navigation.navigate('Staff');
+    } catch (err: unknown) {
+      setDeleteVisible(false);
+      const msg = err instanceof Error ? err.message : 'Xóa nhân viên thất bại';
+      showErrorToast(msg);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleEdit = (): void => {
@@ -79,29 +95,45 @@ export const StaffDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       </View>
 
       {/* Delete confirmation modal */}
-      <Modal visible={deleteVisible} transparent animationType="fade" onRequestClose={() => setDeleteVisible(false)}>
+      <Modal visible={deleteVisible} transparent animationType="fade" onRequestClose={() => !isDeleting && setDeleteVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalBox}>
             {/* Icon */}
             <View style={styles.iconOuter}>
               <View style={styles.iconInner}>
-                <Text style={styles.iconText}>i</Text>
+                <Text style={styles.iconText}>!</Text>
               </View>
             </View>
 
             <Text style={styles.modalTitle}>Xác nhận xóa nhân viên!</Text>
             <Text style={styles.modalBody}>
-              Bạn có chắn muốn xóa nhân viên này không?{'\n'}Hành động này không thể hoàn tác
+              Bạn có chắc muốn xóa{'\n'}
+              <Text style={styles.modalBold}>{staff.name}</Text>
+              {'\n'}khỏi hệ thống?{'\n'}
+              <Text style={styles.modalWarn}>Hành động này không thể hoàn tác.</Text>
             </Text>
 
             <View style={styles.modalDivider} />
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setDeleteVisible(false)} activeOpacity={0.7}>
-                <Text style={styles.modalBtnCancelText}>CANCEL</Text>
+              <TouchableOpacity
+                style={styles.modalBtnCancel}
+                onPress={() => setDeleteVisible(false)}
+                activeOpacity={0.7}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalBtnCancelText}>HỦY</Text>
               </TouchableOpacity>
               <View style={styles.modalBtnDivider} />
-              <TouchableOpacity style={styles.modalBtnOk} onPress={confirmDelete} activeOpacity={0.7}>
-                <Text style={styles.modalBtnOkText}>OK</Text>
+              <TouchableOpacity
+                style={styles.modalBtnOk}
+                onPress={confirmDelete}
+                activeOpacity={0.7}
+                disabled={isDeleting}
+              >
+                {isDeleting
+                  ? <ActivityIndicator size="small" color={colors.error} />
+                  : <Text style={styles.modalBtnOkText}>XÓA</Text>
+                }
               </TouchableOpacity>
             </View>
           </View>
@@ -158,7 +190,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.error,
     paddingVertical: spacing.sm + 2,
     borderRadius: 8,
   },
@@ -213,7 +245,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FEE9CE',
+    backgroundColor: '#FEE2E2',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -222,19 +254,19 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#F59E0B',
+    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconText: {
     color: colors.white,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    lineHeight: 30,
+    lineHeight: 32,
   },
   modalTitle: {
     ...typography.body,
-    color: '#F59E0B',
+    color: colors.error,
     fontWeight: '700',
     fontSize: 15,
     marginBottom: spacing.sm,
@@ -244,9 +276,17 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.lg,
+  },
+  modalBold: {
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalWarn: {
+    color: colors.textSecondary,
+    fontSize: 13,
   },
   modalDivider: {
     height: 1,
@@ -279,6 +319,6 @@ const styles = StyleSheet.create({
   modalBtnOkText: {
     ...typography.body,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.error,
   },
 });
