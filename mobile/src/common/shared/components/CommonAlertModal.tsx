@@ -19,6 +19,7 @@ export type CommonAlertModalProps = {
   variant?: CommonAlertVariant;
   title?: string;
   message?: string;
+  subMessage?: string;
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
@@ -72,6 +73,7 @@ export const CommonAlertModal: React.FC<CommonAlertModalProps> = ({
   variant = 'success',
   title,
   message,
+  subMessage,
   confirmText = 'OK',
   cancelText = 'CANCEL',
   onConfirm,
@@ -151,6 +153,7 @@ export const CommonAlertModal: React.FC<CommonAlertModalProps> = ({
             <Text style={[styles.title, { color: config.textColor }]}>{title}</Text>
           )}
           {!!message && <Text style={styles.message}>{message}</Text>}
+          {!!subMessage && <Text style={styles.subMessage}>{subMessage}</Text>}
 
           <View style={[styles.actions, !shouldShowCancel && styles.actionsSingle]}>
             {shouldShowCancel && (
@@ -222,7 +225,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: spacing.xs,
+  },
+  subMessage: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
     marginBottom: spacing.lg,
+    opacity: 0.85,
   },
   actions: {
     flexDirection: 'row',
