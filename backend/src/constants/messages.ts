@@ -117,6 +117,7 @@ export const STORES_MESSAGES = {
   OWNER_STORE_NOT_FOUND: 'Không tìm thấy cửa hàng của chủ cửa hàng',
   STORE_NOT_FOUND_BY_QR: 'Không tìm thấy cửa hàng từ QR code',
   STAFF_ALREADY_IN_STORE: 'Nhân viên đã thuộc một cửa hàng',
+  STAFF_ALREADY_MEMBER_OF_THIS_STORE: 'Bạn đã là thành viên của cửa hàng này rồi',
   STAFF_JOIN_REQUEST_ALREADY_PENDING: 'Nhân viên đã có yêu cầu tham gia đang chờ duyệt',
   JOIN_REQUEST_NOT_FOUND: 'Không tìm thấy yêu cầu tham gia',
   JOIN_REQUEST_NOT_PENDING: 'Yêu cầu tham gia không còn ở trạng thái chờ duyệt',
@@ -134,5 +135,7 @@ export const STORES_MESSAGES = {
   STORE_NAME_IS_REQUIRED: 'Tên cửa hàng là bắt buộc',
   STORE_NAME_MUST_BE_STRING: 'Tên cửa hàng phải là chuỗi',
   CREATE_STORE_SUCCESS: 'Tạo cửa hàng mới thành công',
-  ONLY_OWNER_CAN_CREATE_STORE: 'Chỉ chủ cửa hàng mới có quyền tạo cửa hàng mới'
+  ONLY_OWNER_CAN_CREATE_STORE: 'Chỉ chủ cửa hàng mới có quyền tạo cửa hàng mới',
+  GET_MY_JOIN_REQUESTS_SUCCESS: 'Lấy danh sách yêu cầu xin việc thành công',
+  GET_STORE_PREVIEW_SUCCESS: 'Lấy thông tin cửa hàng thành công'
 } as const

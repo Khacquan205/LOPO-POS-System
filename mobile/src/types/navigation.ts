@@ -123,6 +123,15 @@ export type MainStackParamList = {
   CreateStaff: undefined;
   StaffApproval: undefined;
   StaffApprovalDetail: { approvalId: string };
+  JobApplications: undefined;
+  ScanQrJob: undefined;
+  QrJobConfirm: {
+    qr_code: string;
+    store_id: string;
+    store_name: string;
+    owner_name: string | null;
+    owner_phone: string | null;
+  };
   Settings: undefined;
   Support: undefined;
   Notifications: undefined;
