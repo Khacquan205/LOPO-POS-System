@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, StyleSheet,
+  View, Text, FlatList, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { colors, spacing, typography } from '../../../ui/theme';
 import { StaffApproval } from '../mock/staff.mock';
 import { useStaffStore } from '../store/staff.store';
 import { useToast } from '../../../ui/components/ToastContext';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'StaffApproval'>;
@@ -23,9 +24,21 @@ export const StaffApprovalScreen: React.FC<Props> = ({ navigation }) => {
   const [blockConfirmName, setBlockConfirmName] = useState('');
   const [blockConfirmCount, setBlockConfirmCount] = useState(0);
   const approvalList = useStaffStore((s) => s.approvalList);
+  const isApprovalLoading = useStaffStore((s) => s.isApprovalLoading);
+  const approvalErrorMessage = useStaffStore((s) => s.approvalErrorMessage);
+  const fetchPendingApprovals = useStaffStore((s) => s.fetchPendingApprovals);
+  const clearApprovalError = useStaffStore((s) => s.clearApprovalError);
+  const approvePendingRequest = useStaffStore((s) => s.approvePendingRequest);
+  const rejectPendingRequest = useStaffStore((s) => s.rejectPendingRequest);
   const setApprovalStatus = useStaffStore((s) => s.setApprovalStatus);
   const blockApproval = useStaffStore((s) => s.blockApproval);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const { showSuccessToast, showErrorToast, showWarningToast } = useToast();
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void fetchPendingApprovals(accessToken);
+  }, [accessToken, fetchPendingApprovals]);
 
   const filtered = approvalList.filter(
     (a) =>
@@ -38,11 +51,20 @@ export const StaffApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setConfirmName(name);
   };
 
-  const confirmApprove = (): void => {
+  const confirmApprove = async (): Promise<void> => {
     if (!confirmId) return;
-    setApprovalStatus(confirmId, 'approved');
-    showSuccessToast('Duyệt thành công!');
-    setConfirmId(null);
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại');
+      return;
+    }
+    try {
+      await approvePendingRequest(accessToken, confirmId);
+      showSuccessToast('Duyệt thành công!');
+      setConfirmId(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể duyệt yêu cầu';
+      showErrorToast(message);
+    }
   };
 
   const handleReject = (id: string, name: string): void => {
@@ -50,11 +72,20 @@ export const StaffApprovalScreen: React.FC<Props> = ({ navigation }) => {
     setRejectConfirmName(name);
   };
 
-  const confirmReject = (): void => {
+  const confirmReject = async (): Promise<void> => {
     if (!rejectConfirmId) return;
-    setApprovalStatus(rejectConfirmId, 'rejected');
-    showErrorToast('Từ chối thành công!');
-    setRejectConfirmId(null);
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại');
+      return;
+    }
+    try {
+      await rejectPendingRequest(accessToken, rejectConfirmId);
+      showErrorToast('Từ chối thành công!');
+      setRejectConfirmId(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể từ chối yêu cầu';
+      showErrorToast(message);
+    }
   };
 
   const handleBlock = (id: string, name: string, count: number): void => {
@@ -150,6 +181,12 @@ export const StaffApprovalScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const handleRefresh = (): void => {
+    if (!accessToken) return;
+    clearApprovalError();
+    void fetchPendingApprovals(accessToken);
+  };
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -177,6 +214,32 @@ export const StaffApprovalScreen: React.FC<Props> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}
+        onRefresh={handleRefresh}
+        refreshing={isApprovalLoading}
+        ListHeaderComponent={
+          isApprovalLoading ? (
+            <View style={styles.centerState}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.stateText}>Đang tải danh sách chờ duyệt...</Text>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !isApprovalLoading ? (
+            <View style={styles.centerState}>
+              {approvalErrorMessage ? (
+                <>
+                  <Text style={styles.errorText}>{approvalErrorMessage}</Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={handleRefresh} activeOpacity={0.8}>
+                    <Text style={styles.retryText}>Thử lại</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.stateText}>Không có yêu cầu tham gia chờ duyệt</Text>
+              )}
+            </View>
+          ) : null
+        }
       />
 
       {/* Approve confirmation modal */}
@@ -283,6 +346,35 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: spacing.xl,
+  },
+  centerState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  stateText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  retryBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  retryText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '600',
   },
   separator: {
     height: 1,
