@@ -407,7 +407,7 @@ class UsersService {
 
   async updateStoreName(owner_user_id: string, store_id: string, name: string) {
     const owner = await this.getOwnerOrThrow(owner_user_id)
-    const store = await Store.findOne({ _id: new Types.ObjectId(store_id), owner_id: owner._id })
+    const store = await Store.findOne({ store_id: new Types.ObjectId(store_id), owner_id: owner._id })
     if (!store) {
       throw new ErrorWithStatus({
         message: USERS_MESSAGES.STORE_NOT_FOUND,
@@ -429,7 +429,7 @@ class UsersService {
 
   async deleteStore(owner_user_id: string, store_id: string) {
     const owner = await this.getOwnerOrThrow(owner_user_id)
-    const store = await Store.findOne({ _id: new Types.ObjectId(store_id), owner_id: owner._id })
+    const store = await Store.findOne({ store_id: new Types.ObjectId(store_id), owner_id: owner._id })
     if (!store) {
       throw new ErrorWithStatus({
         message: USERS_MESSAGES.STORE_NOT_FOUND,

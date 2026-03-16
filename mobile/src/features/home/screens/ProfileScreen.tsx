@@ -9,6 +9,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -20,14 +23,28 @@ import type { StoreItem } from "../services/store.service";
 
 export const ProfileScreen: React.FC = () => {
   const user = useAuthStore((s) => s.user);
-  const { stores, isLoading, error, fetchMyStores, createStore } =
-    useStoreStore();
+  const {
+    stores,
+    isLoading,
+    error,
+    fetchMyStores,
+    createStore,
+    updateStoreName,
+    deleteStore,
+  } = useStoreStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showStoreInfoModal, setShowStoreInfoModal] = useState(false);
   const [showQrInStoreSheet, setShowQrInStoreSheet] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreItem | null>(null);
   const [storeName, setStoreName] = useState("");
+
+  // ── Chọn thao tác sheet ──
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  // ── Chỉnh sửa cửa hàng sheet ──
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     fetchMyStores();
@@ -68,6 +85,67 @@ export const ProfileScreen: React.FC = () => {
     setShowQrInStoreSheet(true);
   };
 
+  // ── Mở "Chọn thao tác" từ icon 3 chấm ──
+  const handleOpenActionSheet = () => {
+    setShowStoreInfoModal(false);
+    setTimeout(() => setShowActionSheet(true), 250);
+  };
+
+  // ── Chỉnh sửa cửa hàng ──
+  const handleOpenEdit = () => {
+    setShowActionSheet(false);
+    setEditName(selectedStore?.name ?? "");
+    setTimeout(() => setShowEditSheet(true), 250);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedStore) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      Alert.alert("Lỗi", "Tên cửa hàng không được để trống");
+      return;
+    }
+    setIsEditing(true);
+    const ok = await updateStoreName(selectedStore.store_id, trimmed);
+    setIsEditing(false);
+    if (ok) {
+      setShowEditSheet(false);
+      // Cập nhật selectedStore local
+      setSelectedStore((prev) => (prev ? { ...prev, name: trimmed } : prev));
+      Alert.alert("Thành công", "Đã đổi tên cửa hàng");
+    } else {
+      Alert.alert("Lỗi", error || "Đổi tên cửa hàng thất bại");
+    }
+  };
+
+  // ── Xóa cửa hàng ──
+  const handleDeleteStore = () => {
+    setShowActionSheet(false);
+    setTimeout(() => {
+      Alert.alert(
+        "Xác nhận xóa",
+        `Bạn có chắc chắn muốn xóa cửa hàng "${selectedStore?.name}"?\nHành động này không thể hoàn tác.`,
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Xóa",
+            style: "destructive",
+            onPress: async () => {
+              if (!selectedStore) return;
+              const ok = await deleteStore(selectedStore.store_id);
+              if (ok) {
+                setSelectedStore(null);
+                Alert.alert("Thành công", "Đã xóa cửa hàng");
+              } else {
+                Alert.alert("Lỗi", error || "Xóa cửa hàng thất bại");
+              }
+            },
+          },
+        ],
+      );
+    }, 250);
+  };
+
   const renderStore = ({ item }: { item: StoreItem }) => (
     <TouchableOpacity
       style={styles.storeRow}
@@ -93,10 +171,29 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Profile" showBack />
+      <ScreenHeader title="THÔNG TIN CỬA HÀNG" showBack />
 
       <View style={styles.card}>
-        <Text style={styles.name}>{displayName}</Text>
+        <View style={styles.cardRow}>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={styles.name}>{displayName}</Text>
+          </View>
+          {/* Icon 3 chấm xanh */}
+          {selectedStore && (
+            <TouchableOpacity
+              style={styles.moreBtn}
+              activeOpacity={0.7}
+              onPress={handleOpenActionSheet}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="ellipsis-vertical"
+                size={18}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.phonePill}>
           <Ionicons name="call" size={12} color={colors.textSecondary} />
           <Text style={styles.phone}>{displayPhone}</Text>
@@ -135,13 +232,17 @@ export const ProfileScreen: React.FC = () => {
         )}
       </View>
 
+      {/* ── Modal: Thêm cửa hàng ── */}
       <Modal
         visible={showAddModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowAddModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <TouchableOpacity
             style={styles.backdrop}
             activeOpacity={1}
@@ -170,9 +271,10 @@ export const ProfileScreen: React.FC = () => {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
+      {/* ── Modal: Thông tin cửa hàng ── */}
       <Modal
         visible={showStoreInfoModal}
         transparent
@@ -186,11 +288,26 @@ export const ProfileScreen: React.FC = () => {
             onPress={() => setShowStoreInfoModal(false)}
           />
           <View style={styles.storeInfoSheet}>
-            <Text style={styles.infoTitle}>THÔNG TIN CỬA HÀNG</Text>
+            <View style={styles.infoTitleRow}>
+              <Text style={styles.infoTitle}>THÔNG TIN CỬA HÀNG</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleOpenActionSheet}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={18}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Tên cửa hàng</Text>
-              <Text style={styles.infoValue}>{selectedStore?.name || "-"}</Text>
+              <Text style={styles.infoValue}>
+                {selectedStore?.name || "-"}
+              </Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -236,6 +353,97 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* ── Modal: Chọn thao tác ── */}
+      <Modal
+        visible={showActionSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowActionSheet(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setShowActionSheet(false)}
+          />
+          <View style={styles.actionSheet}>
+            <Text style={styles.actionSheetTitle}>CHỌN THAO TÁC</Text>
+
+            <TouchableOpacity
+              style={styles.actionOption}
+              activeOpacity={0.7}
+              onPress={handleOpenEdit}
+            >
+              <Text style={styles.actionOptionText}>Chỉnh sửa cửa hàng</Text>
+            </TouchableOpacity>
+
+            <View style={styles.actionSep} />
+
+            <TouchableOpacity
+              style={styles.actionOption}
+              activeOpacity={0.7}
+              onPress={handleDeleteStore}
+            >
+              <Text style={styles.actionOptionText}>Xóa cửa hàng</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCloseBtn}
+              activeOpacity={0.85}
+              onPress={() => setShowActionSheet(false)}
+            >
+              <Text style={styles.actionCloseBtnText}>ĐÓNG</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal: Chỉnh sửa cửa hàng ── */}
+      <Modal
+        visible={showEditSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !isEditing && setShowEditSheet(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => !isEditing && setShowEditSheet(false)}
+          />
+          <View style={styles.bottomSheet}>
+            <Text style={styles.sheetTitle}>CHỈNH SỬA CỬA HÀNG</Text>
+            <Text style={styles.fieldLabel}>
+              Tên cửa hàng <Text style={{ color: colors.error }}>*</Text>
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập tên cửa hàng"
+              placeholderTextColor={colors.textSecondary}
+              value={editName}
+              onChangeText={setEditName}
+              editable={!isEditing}
+            />
+            <TouchableOpacity
+              style={[
+                styles.submitBtn,
+                (!editName.trim() || isEditing) && styles.submitBtnDisabled,
+              ]}
+              activeOpacity={0.85}
+              onPress={handleSaveEdit}
+              disabled={!editName.trim() || isEditing}
+            >
+              {isEditing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text style={styles.submitText}>Hoàn tất</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -252,6 +460,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: spacing.md,
     alignItems: "center",
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: spacing.md,
+  },
+  moreBtn: {
+    padding: 4,
   },
   name: {
     ...typography.h3,
@@ -373,6 +590,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     minHeight: 48,
   },
+  submitBtnDisabled: {
+    opacity: 0.5,
+  },
   submitText: {
     ...typography.body,
     color: "#ffffff",
@@ -385,11 +605,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.lg,
   },
+  infoTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
   infoTitle: {
     ...typography.h3,
     color: colors.primary,
     textTransform: "uppercase",
-    marginBottom: spacing.md,
   },
   infoRow: {
     flexDirection: "row",
@@ -448,6 +673,48 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   closeButtonText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: "700",
+  },
+
+  // ── Chọn thao tác sheet ──
+  actionSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+  },
+  actionSheetTitle: {
+    ...typography.h3,
+    color: colors.primary,
+    textTransform: "uppercase",
+    marginBottom: spacing.md,
+  },
+  actionOption: {
+    paddingVertical: spacing.md,
+  },
+  actionOptionText: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  actionSep: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+  },
+  actionCloseBtn: {
+    marginTop: spacing.md,
+    width: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.md,
+    minHeight: 48,
+  },
+  actionCloseBtnText: {
     ...typography.body,
     color: colors.white,
     fontWeight: "700",
