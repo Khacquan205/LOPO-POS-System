@@ -80,7 +80,13 @@ export type MainStackParamList = {
     }[];
     customer?: { name: string; phone?: string };
   };
-  Sales: { pickedItems?: PickedItem[]; updatedItem?: UpdatedItem; draftOrderId?: string; source?: 'sales' | 'orders' } | undefined;
+  Sales: {
+    pickedItems?: PickedItem[];
+    updatedItem?: UpdatedItem;
+    draftOrderId?: string;
+    source?: 'sales' | 'orders';
+    resetToNew?: boolean;
+  } | undefined;
   ProductPicker: {
     orderId: string;
     returnScreen: "Sales" | "DraftOrderDetail";
