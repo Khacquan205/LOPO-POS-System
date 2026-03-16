@@ -8,14 +8,11 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import {
   getOwnerStaffList,
-
   getPendingJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
-
   updateStaffStatus,
   deleteStaff as apiDeleteStaff,
-
 } from "../services/staff.service";
 
 interface StaffState {
