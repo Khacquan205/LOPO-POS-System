@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -81,6 +82,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categoryLookup = useMemo(
     () =>
@@ -322,6 +324,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
     if (!accessToken) return;
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
     const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
@@ -369,6 +372,8 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
       color: item.color,
     }));
 
+    setIsSubmitting(true);
+
     try {
       await updateProduct(
         accessToken,
@@ -405,11 +410,13 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     showSuccessToast("Cập nhật sản phẩm thành công!");
     navigation.navigate("Products");
-  };
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -440,9 +447,13 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         />
 
         <FooterActions
-          onCancelPress={() => navigation.goBack()}
+          onCancelPress={() => {
+            if (isSubmitting) return;
+            navigation.goBack();
+          }}
           onPrimaryPress={handleSave}
           primaryLabel="Lưu"
+          loading={isSubmitting}
         />
       </ScrollView>
 
@@ -493,6 +504,16 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Global submitting overlay */}
+      {isSubmitting && (
+        <View style={styles.submittingOverlay}>
+          <View style={styles.submittingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.submittingText}>Đang xử lý...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -505,6 +526,26 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: "#F6F6F6",
+  },
+  submittingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submittingCard: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  submittingText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
   },
   scanContainer: {
     flex: 1,

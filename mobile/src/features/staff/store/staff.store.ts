@@ -8,14 +8,14 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import {
   getOwnerStaffList,
-<<<<<<< Updated upstream
+
   getPendingJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
-=======
+
   updateStaffStatus,
   deleteStaff as apiDeleteStaff,
->>>>>>> Stashed changes
+
 } from "../services/staff.service";
 
 interface StaffState {
@@ -313,11 +313,11 @@ export const useStaffStore = create<StaffState>((set) => ({
       approvalList: state.approvalList.map((a) =>
         a.id === id
           ? {
-              ...a,
-              status,
-              rejectedCount:
-                status === "rejected" ? a.rejectedCount + 1 : a.rejectedCount,
-            }
+            ...a,
+            status,
+            rejectedCount:
+              status === "rejected" ? a.rejectedCount + 1 : a.rejectedCount,
+          }
           : a,
       ),
     })),

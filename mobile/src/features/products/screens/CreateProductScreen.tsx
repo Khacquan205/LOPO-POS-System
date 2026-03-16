@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -57,6 +58,7 @@ export const CreateProductScreen: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -247,10 +249,12 @@ export const CreateProductScreen: React.FC = () => {
   };
 
   const handleCancel = () => {
+    if (isSubmitting) return;
     navigation.goBack();
   };
 
   const handleCreate = async () => {
+    if (isSubmitting) return;
     if (!accessToken) return;
     const trimmedName = productName.trim();
     const normalizedBarcode = barcode.trim();
@@ -297,6 +301,7 @@ export const CreateProductScreen: React.FC = () => {
     }));
 
     try {
+      setIsSubmitting(true);
       await createProduct(
         accessToken,
         {
@@ -334,6 +339,8 @@ export const CreateProductScreen: React.FC = () => {
         "Không thể tạo sản phẩm",
         "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -368,10 +375,11 @@ export const CreateProductScreen: React.FC = () => {
 
         {/* Footer Actions */}
         <FooterActions
-          onCancelPress={handleCancel}
-          onPrimaryPress={handleCreate}
-          primaryLabel="Tạo mới"
-        />
+        onCancelPress={handleCancel}
+        onPrimaryPress={handleCreate}
+        primaryLabel="Tạo mới"
+        loading={isSubmitting}
+      />
       </ScrollView>
 
       {/* Category Picker Bottom Sheet */}
@@ -389,6 +397,16 @@ export const CreateProductScreen: React.FC = () => {
         onClose={() => setShowAddCategory(false)}
         onSubmit={handleAddCategorySubmit}
       />
+
+      {/* Global submitting overlay */}
+      {isSubmitting && (
+        <View style={styles.submittingOverlay}>
+          <View style={styles.submittingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.submittingText}>Đang xử lý...</Text>
+          </View>
+        </View>
+      )}
 
       <Modal
         visible={isScanningBarcode}
@@ -438,6 +456,26 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: "#F6F6F6",
+  },
+  submittingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submittingCard: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  submittingText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
   },
   scanContainer: {
     flex: 1,
