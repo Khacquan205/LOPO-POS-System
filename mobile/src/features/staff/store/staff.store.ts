@@ -8,9 +8,14 @@ import {
 import { ApiError } from "../../../lib/api/client";
 import {
   getOwnerStaffList,
+<<<<<<< Updated upstream
   getPendingJoinRequests,
   approveJoinRequest,
   rejectJoinRequest,
+=======
+  updateStaffStatus,
+  deleteStaff as apiDeleteStaff,
+>>>>>>> Stashed changes
 } from "../services/staff.service";
 
 interface StaffState {
@@ -32,6 +37,8 @@ interface StaffState {
     data: Partial<Pick<Staff, "name" | "phone" | "isActive">>,
   ) => void;
   removeStaff: (id: string) => void;
+  updateStaffStatusApi: (accessToken: string, staffId: string, status: 'active' | 'inactive') => Promise<void>;
+  deleteStaffApi: (accessToken: string, staffId: string) => Promise<void>;
   setApprovalStatus: (id: string, status: ApprovalStatus) => void;
   blockApproval: (id: string) => void;
 }
@@ -284,6 +291,22 @@ export const useStaffStore = create<StaffState>((set) => ({
     set((state) => ({
       staffList: state.staffList.filter((s) => s.id !== id),
     })),
+
+  updateStaffStatusApi: async (accessToken, staffId, status) => {
+    const updated = await updateStaffStatus(accessToken, staffId, status);
+    set((state) => ({
+      staffList: state.staffList.map((s) =>
+        s.id === staffId ? { ...s, isActive: updated.status === 'active' } : s,
+      ),
+    }));
+  },
+
+  deleteStaffApi: async (accessToken, staffId) => {
+    await apiDeleteStaff(accessToken, staffId);
+    set((state) => ({
+      staffList: state.staffList.filter((s) => s.id !== staffId),
+    }));
+  },
 
   setApprovalStatus: (id, status) =>
     set((state) => ({

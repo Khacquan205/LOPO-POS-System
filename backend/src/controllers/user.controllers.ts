@@ -111,3 +111,13 @@ export const deleteAllStoresController = async (req: Request, res: Response) => 
     result
   })
 }
+
+export const deleteStaffController = async (req: Request, res: Response) => {
+  const owner_user_id = String(req.decoded_authorization?.user_id || '')
+  const staff_id = String(req.params.staff_id || '')
+  const result = await usersService.deleteStaff(owner_user_id, staff_id)
+  return res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.DELETE_STAFF_SUCCESS,
+    result
+  })
+}

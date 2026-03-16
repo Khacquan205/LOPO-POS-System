@@ -483,6 +483,45 @@ class UsersService {
 
     return { deleted_count: storeIds.length }
   }
+
+  async deleteStaff(owner_user_id: string, staff_id: string) {
+    const owner = await User.findById(owner_user_id)
+    if (!owner || owner.role !== UserRole.Owner) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.ONLY_OWNER_CAN_DO_THIS,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+    if (!owner.store_id) {
+      throw new ErrorWithStatus({
+        message: 'Tài khoản chưa được liên kết với cửa hàng',
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    }
+
+    const staff = await User.findOne({
+      _id: new Types.ObjectId(staff_id),
+      role: UserRole.Staff,
+      store_id: owner.store_id
+    })
+    if (!staff) {
+      throw new ErrorWithStatus({
+        message: USERS_MESSAGES.STAFF_NOT_IN_YOUR_STORE,
+        status: HTTP_STATUS.NOT_FOUND
+      })
+    }
+
+    const deletedId = staff._id.toString()
+
+    // Xóa user, refresh tokens liên quan và bản ghi UserStore
+    await Promise.all([
+      User.deleteOne({ _id: staff._id }),
+      RefreshToken.deleteMany({ user_id: staff._id }),
+      UserStore.deleteMany({ user_id: staff._id })
+    ])
+
+    return { deleted_staff_id: deletedId }
+  }
 }
 
 const usersService = new UsersService()

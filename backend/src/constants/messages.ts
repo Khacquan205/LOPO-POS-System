@@ -33,7 +33,9 @@ export const USERS_MESSAGES = {
   UPDATE_STORE_SUCCESS: 'Cập nhật cửa hàng thành công',
   DELETE_STORE_SUCCESS: 'Xóa cửa hàng thành công',
   DELETE_ALL_STORES_SUCCESS: 'Xóa tất cả cửa hàng thành công',
-  STORE_NOT_FOUND: 'Không tìm thấy cửa hàng'
+  STORE_NOT_FOUND: 'Không tìm thấy cửa hàng',
+  DELETE_STAFF_SUCCESS: 'Xóa nhân viên thành công',
+  STAFF_NOT_IN_YOUR_STORE: 'Nhân viên không thuộc cửa hàng của bạn'
 } as const
 
 export const CATEGORIES_MESSAGES = {

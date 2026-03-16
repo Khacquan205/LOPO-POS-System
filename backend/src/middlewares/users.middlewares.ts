@@ -91,6 +91,19 @@ export const storeIdParamValidator = validate(
   )
 )
 
+export const staffIdParamValidator = validate(
+  checkSchema(
+    {
+      staff_id: {
+        in: ['params'],
+        notEmpty: { errorMessage: 'staff_id là bắt buộc' },
+        isMongoId: { errorMessage: 'staff_id không hợp lệ' }
+      }
+    },
+    ['params']
+  )
+)
+
 export const updateStoreNameValidator = validate(
   checkSchema(
     {

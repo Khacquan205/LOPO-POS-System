@@ -135,3 +135,45 @@ export async function createOwnerStaff(
 
   return data.result;
 }
+
+interface UpdateStaffStatusResponse {
+  message: string;
+  result: OwnerStaffItem;
+}
+
+/** PATCH /users/owner/staff/:staff_id/status — đổi trạng thái active/inactive */
+export async function updateStaffStatus(
+  accessToken: string,
+  staffId: string,
+  status: 'active' | 'inactive',
+): Promise<OwnerStaffItem> {
+  const data = await apiRequest<UpdateStaffStatusResponse>(
+    `/users/owner/staff/${staffId}/status`,
+    {
+      method: 'PATCH',
+      token: accessToken,
+      body: JSON.stringify({ status }),
+    },
+  );
+  return data.result;
+}
+
+interface DeleteStaffResponse {
+  message: string;
+  result: { deleted_staff_id: string };
+}
+
+/** DELETE /users/owner/staff/:staff_id — xóa nhân viên khỏi hệ thống */
+export async function deleteStaff(
+  accessToken: string,
+  staffId: string,
+): Promise<{ deleted_staff_id: string }> {
+  const data = await apiRequest<DeleteStaffResponse>(
+    `/users/owner/staff/${staffId}`,
+    {
+      method: 'DELETE',
+      token: accessToken,
+    },
+  );
+  return data.result;
+}
