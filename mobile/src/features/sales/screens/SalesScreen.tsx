@@ -29,6 +29,7 @@ import { usePosStore } from '../store/pos.store';
 import { useProductsStore } from '../../products/store/products.store';
 import { useInventoryStore } from '../../products/store/inventory.store';
 import { useCategoriesStore } from '../../products/store/categories.store';
+import { useOrdersStore } from '../../orders/store/orders.store';
 import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 import type { StockItem } from '../../../lib/stock';
@@ -60,8 +61,8 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   const setItemQty = usePosStore((s) => s.setItemQty);
   const cancelOrder = usePosStore((s) => s.cancel);
   const resetSession = usePosStore((s) => s.resetSession);
-  const startNewDraft = usePosStore((s) => s.startNewDraft);
   const validateDraftOrder = usePosStore((s) => s.validateDraftOrder);
+  const fetchOrders = useOrdersStore((s) => s.fetchOrders);
 
   const [customer, setCustomer] = React.useState<Customer | undefined>(
     undefined,
@@ -125,6 +126,14 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       setIsEditingDraft(false);
     }
   }, [route.params?.source, route.params?.draftOrderId]);
+
+  useEffect(() => {
+    if (!route.params?.resetToNew) return;
+    setCustomer(undefined);
+    setIsEditingDraft(false);
+    resetSession();
+    navigation.setParams({ resetToNew: undefined });
+  }, [route.params?.resetToNew, navigation, resetSession]);
 
   useEffect(() => {
     Animated.timing(menuAnim, {
@@ -301,9 +310,31 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
       });
       return;
     }
-    const newId = await startNewDraft(accessToken);
-    if (newId) setCustomer(undefined);
-  }, [accessToken, isUpdatingItems, startNewDraft, showAlert]);
+
+    const hasDraft = !!orderId && posItems.length > 0;
+    if (!hasDraft) {
+      setCustomer(undefined);
+      setIsEditingDraft(false);
+      resetSession();
+      return;
+    }
+
+    showAlert({
+      variant: 'warning',
+      title: 'Tạo đơn mới',
+      message: 'Nhấn xác nhận để tạo đơn mới.',
+      subMessage: 'Đơn hàng hiện tại sẽ được lưu lại dưới dạng nháp.',
+      confirmText: 'Xác nhận',
+      cancelText: 'Hủy',
+      showCancel: true,
+      onConfirm: async () => {
+        setCustomer(undefined);
+        setIsEditingDraft(false);
+        resetSession();
+        await fetchOrders(accessToken);
+      },
+    });
+  }, [accessToken, isUpdatingItems, orderId, posItems.length, showAlert, resetSession, fetchOrders]);
 
   const handleMenuNewOrder = useCallback(() => {
     setIsMenuOpen(false);
@@ -540,14 +571,10 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>TÙY CHỌN</Text>
-            {!isEditingDraft && (
-              <>
-                <TouchableOpacity style={styles.menuItem} onPress={handleMenuNewOrder}>
-                  <Text style={styles.menuText}>Tạo đơn mới</Text>
-                </TouchableOpacity>
-                <View style={styles.menuDividerStrong} />
-              </>
-            )}
+            <TouchableOpacity style={styles.menuItem} onPress={handleMenuNewOrder}>
+              <Text style={styles.menuText}>Tạo đơn mới</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDividerStrong} />
             <TouchableOpacity style={[styles.menuItem, styles.menuItemDanger]} onPress={handleMenuDelete}>
               <Text style={[styles.menuText, styles.menuTextDanger]}>Xóa đơn</Text>
             </TouchableOpacity>

@@ -166,6 +166,8 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     const posOrderId = usePosStore.getState().orderId;
     if (orderId && orderId === posOrderId) {
       resetSession();
+      navigation.navigate('Sales', { source: 'sales', resetToNew: true });
+      return;
     }
     if (accessToken) {
       (async () => {

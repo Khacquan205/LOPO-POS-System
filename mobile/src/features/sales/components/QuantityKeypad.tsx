@@ -6,13 +6,13 @@ type KeyLabel =
   | '1' | '2' | '3'
   | '4' | '5' | '6'
   | '7' | '8' | '9'
-  | 'DEL';
+  | '0' | 'DEL';
 
 const ROWS: KeyLabel[][] = [
   ['1', '2', '3'],
   ['4', '5', '6'],
   ['7', '8', '9'],
-  ['DEL'],
+  ['0', 'DEL'],
 ];
 
 interface QuantityKeypadProps {
@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceSecondary,
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -83,9 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textPrimary,
   },
-  deleteKey: {
-    marginBottom: spacing.sm,
-  },
+  deleteKey: {},
   deleteText: {
     fontSize: 14,
     fontWeight: '700',
