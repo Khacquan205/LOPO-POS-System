@@ -158,10 +158,12 @@ export const HomeScreen: React.FC = () => {
           activeOpacity={0.7}
           style={styles.storeSelectorWrapper}
         >
-          <Text style={styles.storeLink}>
-            {activeStore ? activeStore.name : "Chọn cửa hàng"}
-            {"  ▸"}
-          </Text>
+          <View style={styles.storeSelectorRow}>
+            <Ionicons name="storefront" size={20} color={colors.linkOrange} style={{ marginRight: spacing.xs }} />
+            <Text style={styles.storeLink}>
+              {activeStore ? activeStore.name : "Chọn cửa hàng"}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {/* Grid 2x4 */}
@@ -282,17 +284,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.lg,
-    marginTop: spacing.sm,
   },
   storeLink: {
     ...typography.body,
     color: colors.linkOrange,
+    textDecorationLine: "underline",
     textAlign: "center",
   },
   storeSelectorWrapper: {
     alignItems: "center",
-    marginLeft: spacing.xs,
+    justifyContent: "center",
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
   gridContainer: {
     flexDirection: "row",
