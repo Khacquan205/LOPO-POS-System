@@ -278,7 +278,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
-  const [showDeleteSuccessToast, setShowDeleteSuccessToast] = useState(false);
   const [serverProduct, setServerProduct] = useState<
     (typeof products)[number] | null
   >(null);
@@ -488,10 +487,7 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 route.params.productId,
                 categoryLookup,
               );
-              setShowDeleteSuccessToast(true);
-              setTimeout(() => {
-                navigateToProducts(true);
-              }, 700);
+              navigateToProducts(true);
             } catch (error) {
               Alert.alert(
                 "Xóa thất bại",
@@ -507,11 +503,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               );
             }
           }}
-        />
-
-        <SuccessToast
-          visible={showDeleteSuccessToast}
-          message="Xóa sản phẩm thành công!"
         />
       </View>
     </SafeAreaView>

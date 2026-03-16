@@ -19,7 +19,7 @@ import { ProductItem } from "../components/ProductItem";
 import { FloatingActionButton } from "../components/FloatingActionButton";
 import { FilterBottomSheet } from "../components/FilterBottomSheet";
 import { BulkActionBar } from "../components/BulkActionBar";
-import { SuccessToast, DeleteConfirmModal } from "../../../ui/components";
+import { DeleteConfirmModal, useToast } from "../../../ui/components";
 import { colors, spacing, radius, typography } from "../../../ui/theme";
 import { useProductsStore } from "../store/products.store";
 import { useAuthStore } from "../../../store/auth.store";
@@ -62,6 +62,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
   const updateCategory = useCategoriesStore((state) => state.updateCategory);
   const deleteCategory = useCategoriesStore((state) => state.deleteCategory);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const { showSuccessToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [filterVisible, setFilterVisible] = useState(false);
@@ -70,8 +71,6 @@ export const ProductManagementScreen: React.FC<Props> = ({
   );
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [categoryManagerVisible, setCategoryManagerVisible] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
@@ -117,11 +116,10 @@ export const ProductManagementScreen: React.FC<Props> = ({
       | undefined;
 
     if (params?.showDeleteSuccessToast) {
-      setToastMessage("Xóa sản phẩm thành công!");
-      setToastVisible(true);
+      showSuccessToast("Xóa sản phẩm thành công!");
       navigation.setParams({ showDeleteSuccessToast: undefined });
     }
-  }, [navigation, route.params?.showDeleteSuccessToast]);
+  }, [navigation, route.params?.showDeleteSuccessToast, showSuccessToast]);
 
   const categoryOptions = useMemo<CategoryOption[]>(
     () => [
@@ -220,7 +218,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
 
     try {
       await removeProducts(accessToken, selectedIds, categoryLookup);
-      setToastVisible(true);
+      showSuccessToast("Xóa sản phẩm thành công!");
       setIsSelectionMode(false);
       setSelectedIds([]);
     } catch (error) {
@@ -373,15 +371,6 @@ export const ProductManagementScreen: React.FC<Props> = ({
       )}
 
       {/* Success Toast */}
-      <SuccessToast
-        visible={toastVisible}
-        message={toastMessage ?? ""}
-        onHide={() => {
-          setToastVisible(false);
-          setToastMessage(null);
-        }}
-      />
-
       {/* Filter Bottom Sheet */}
       <FilterBottomSheet
         visible={filterVisible}

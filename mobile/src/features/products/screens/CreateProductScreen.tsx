@@ -37,7 +37,7 @@ import { colors, spacing } from "../../../ui/theme";
 export const CreateProductScreen: React.FC = () => {
   const navigation = useNavigation();
   const createProduct = useProductsStore((state) => state.createProduct);
-  const { showSuccessToast } = useToast();
+  const { showSuccessToast, showWarningToast, showErrorToast } = useToast();
   const products = useProductsStore((state) => state.products);
   const accessToken = useAuthStore((state) => state.accessToken);
   const categories = useCategoriesStore((state) => state.categories);
@@ -56,6 +56,9 @@ export const CreateProductScreen: React.FC = () => {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | undefined>(
+    undefined,
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,16 +107,18 @@ export const CreateProductScreen: React.FC = () => {
 
     setImageUrl(localUri);
     setIsUploadingImage(true);
+    setUploadedImageUrl(undefined);
 
     try {
       const uploadedUrl = await uploadImageToCloudinary(localUri);
       setImageUrl(uploadedUrl);
+      setUploadedImageUrl(uploadedUrl);
+      showSuccessToast("Ảnh đã upload xong, bạn có thể lưu sản phẩm.");
     } catch (error) {
       console.warn("Upload image failed:", error);
-      Alert.alert(
-        "Không thể upload ảnh",
-        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
-      );
+      setImageUrl(undefined);
+      setUploadedImageUrl(undefined);
+      showErrorToast("Upload ảnh thất bại. Vui lòng thử lại.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -143,16 +148,18 @@ export const CreateProductScreen: React.FC = () => {
 
     setImageUrl(localUri);
     setIsUploadingImage(true);
+    setUploadedImageUrl(undefined);
 
     try {
       const uploadedUrl = await uploadImageToCloudinary(localUri);
       setImageUrl(uploadedUrl);
+      setUploadedImageUrl(uploadedUrl);
+      showSuccessToast("Ảnh đã upload xong, bạn có thể lưu sản phẩm.");
     } catch (error) {
       console.warn("Upload image failed:", error);
-      Alert.alert(
-        "Không thể upload ảnh",
-        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
-      );
+      setImageUrl(undefined);
+      setUploadedImageUrl(undefined);
+      showErrorToast("Upload ảnh thất bại. Vui lòng thử lại.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -256,6 +263,12 @@ export const CreateProductScreen: React.FC = () => {
   const handleCreate = async () => {
     if (isSubmitting) return;
     if (!accessToken) return;
+    if (isUploadingImage) {
+      showWarningToast(
+        "Ảnh đang được upload. Vui lòng đợi xong rồi bấm Tạo mới.",
+      );
+      return;
+    }
     const trimmedName = productName.trim();
     const normalizedBarcode = barcode.trim();
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
@@ -300,6 +313,11 @@ export const CreateProductScreen: React.FC = () => {
       color: item.color,
     }));
 
+    const resolvedImageUrl =
+      imageUrl?.startsWith("http") || imageUrl?.startsWith("https")
+        ? imageUrl
+        : uploadedImageUrl;
+
     try {
       setIsSubmitting(true);
       await createProduct(
@@ -309,7 +327,7 @@ export const CreateProductScreen: React.FC = () => {
           price: normalizedPrice,
           category_id: selectedCategoryId,
           barcode: normalizedBarcode || undefined,
-          image_url: imageUrl,
+          image_url: resolvedImageUrl,
           track_inventory: manageInventory,
           on_hand: manageInventory ? normalizedOnHand : 0,
           is_active: true,
