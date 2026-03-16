@@ -7,12 +7,14 @@ interface FooterActionsProps {
   onCancelPress?: () => void;
   onPrimaryPress?: () => void;
   primaryLabel?: string;
+  loading?: boolean;
 }
 
 export const FooterActions: React.FC<FooterActionsProps> = ({
   onCancelPress,
   onPrimaryPress,
   primaryLabel = "Tạo mới",
+  loading = false,
 }) => {
   return (
     <View style={styles.container}>
@@ -23,8 +25,14 @@ export const FooterActions: React.FC<FooterActionsProps> = ({
       </TouchableOpacity>
 
       {/* Create Button */}
-      <TouchableOpacity onPress={onPrimaryPress} style={styles.createButton}>
-        <Text style={styles.createText}>{primaryLabel}</Text>
+      <TouchableOpacity
+        onPress={loading ? undefined : onPrimaryPress}
+        style={[styles.createButton, loading && styles.createButtonDisabled]}
+        activeOpacity={loading ? 1 : 0.8}
+      >
+        <Text style={styles.createText}>
+          {loading ? "Đang xử lý..." : primaryLabel}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -56,6 +64,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 56,
+  },
+  createButtonDisabled: {
+    opacity: 0.7,
   },
   createText: {
     fontSize: 16,

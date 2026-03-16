@@ -19,7 +19,7 @@ import { ProductItem } from "../components/ProductItem";
 import { FloatingActionButton } from "../components/FloatingActionButton";
 import { FilterBottomSheet } from "../components/FilterBottomSheet";
 import { BulkActionBar } from "../components/BulkActionBar";
-import { SuccessToast, DeleteConfirmModal } from "../../../ui/components";
+import { DeleteConfirmModal, useToast } from "../../../ui/components";
 import { colors, spacing, radius, typography } from "../../../ui/theme";
 import { useProductsStore } from "../store/products.store";
 import { useAuthStore } from "../../../store/auth.store";
@@ -62,6 +62,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
   const updateCategory = useCategoriesStore((state) => state.updateCategory);
   const deleteCategory = useCategoriesStore((state) => state.deleteCategory);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const { showSuccessToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [filterVisible, setFilterVisible] = useState(false);
@@ -70,8 +71,6 @@ export const ProductManagementScreen: React.FC<Props> = ({
   );
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [categoryManagerVisible, setCategoryManagerVisible] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
@@ -117,11 +116,10 @@ export const ProductManagementScreen: React.FC<Props> = ({
       | undefined;
 
     if (params?.showDeleteSuccessToast) {
-      setToastMessage("Xóa sản phẩm thành công!");
-      setToastVisible(true);
+      showSuccessToast("Xóa sản phẩm thành công!");
       navigation.setParams({ showDeleteSuccessToast: undefined });
     }
-  }, [navigation, route.params?.showDeleteSuccessToast]);
+  }, [navigation, route.params?.showDeleteSuccessToast, showSuccessToast]);
 
   const categoryOptions = useMemo<CategoryOption[]>(
     () => [
@@ -220,7 +218,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
 
     try {
       await removeProducts(accessToken, selectedIds, categoryLookup);
-      setToastVisible(true);
+      showSuccessToast("Xóa sản phẩm thành công!");
       setIsSelectionMode(false);
       setSelectedIds([]);
     } catch (error) {
@@ -249,8 +247,10 @@ export const ProductManagementScreen: React.FC<Props> = ({
     try {
       if (editingCategoryId) {
         await updateCategory(accessToken, editingCategoryId, { name: trimmed });
+        showSuccessToast("Cập nhật loại sản phẩm thành công!");
       } else {
         await createCategory(accessToken, { name: trimmed, is_active: true });
+        showSuccessToast("Thêm loại sản phẩm thành công!");
       }
       await loadProductsAndCategories();
       resetCategoryForm();
@@ -272,6 +272,7 @@ export const ProductManagementScreen: React.FC<Props> = ({
       if (editingCategoryId === deleteCategoryId) {
         resetCategoryForm();
       }
+      showSuccessToast("Xóa loại sản phẩm thành công!");
     } catch (error) {
       console.warn("Delete category failed:", error);
       Alert.alert("Không thể xóa loại sản phẩm", "Vui lòng thử lại.");
@@ -282,6 +283,21 @@ export const ProductManagementScreen: React.FC<Props> = ({
 
   const handleDeleteCategory = (categoryId: string) => {
     if (!accessToken) return;
+
+    // Chỉ chặn xóa nếu loại đó đang được dùng
+    // bởi sản phẩm trong danh sách hiện tại (đã áp filter/search).
+    const hasProductsUsingCategory = filteredProducts.some(
+      (p) => p.categoryId === categoryId,
+    );
+
+    if (hasProductsUsingCategory) {
+      Alert.alert(
+        "Không thể xóa loại sản phẩm",
+        "Loại sản phẩm này đang được gắn cho một hoặc nhiều sản phẩm trong danh sách. Vui lòng đổi loại của các sản phẩm đó trước khi xóa.",
+      );
+      return;
+    }
+
     setDeleteCategoryId(categoryId);
   };
 
@@ -373,15 +389,6 @@ export const ProductManagementScreen: React.FC<Props> = ({
       )}
 
       {/* Success Toast */}
-      <SuccessToast
-        visible={toastVisible}
-        message={toastMessage ?? ""}
-        onHide={() => {
-          setToastVisible(false);
-          setToastMessage(null);
-        }}
-      />
-
       {/* Filter Bottom Sheet */}
       <FilterBottomSheet
         visible={filterVisible}
@@ -473,17 +480,43 @@ export const ProductManagementScreen: React.FC<Props> = ({
             >
               <Text style={styles.modalCloseBtnText}>Đóng</Text>
             </TouchableOpacity>
+
+            {deleteCategoryId ? (
+              <View style={styles.categoryDeleteConfirmOverlay}>
+                <View style={styles.categoryDeleteConfirmCard}>
+                  <Text style={styles.categoryDeleteConfirmTitle}>
+                    Xác nhận xóa loại sản phẩm!
+                  </Text>
+                  <Text style={styles.categoryDeleteConfirmMessage}>
+                    Bạn có chắc muốn xóa loại sản phẩm này không?
+                    {"\n"}Hành động này không thể hoàn tác
+                  </Text>
+                  <View style={styles.categoryDeleteConfirmButtons}>
+                    <TouchableOpacity
+                      style={styles.categoryDeleteConfirmCancelBtn}
+                      activeOpacity={0.8}
+                      onPress={() => setDeleteCategoryId(null)}
+                    >
+                      <Text style={styles.categoryDeleteConfirmCancelText}>
+                        Hủy
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.categoryDeleteConfirmOkBtn}
+                      activeOpacity={0.85}
+                      onPress={confirmDeleteCategory}
+                    >
+                      <Text style={styles.categoryDeleteConfirmOkText}>
+                        Xóa
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
       </Modal>
-
-      <DeleteConfirmModal
-        visible={!!deleteCategoryId}
-        title="Xác nhận xóa loại sản phẩm!"
-        message="Bạn có chắc muốn xóa loại sản phẩm này không?\nHành động này không thể hoàn tác"
-        onCancel={() => setDeleteCategoryId(null)}
-        onConfirm={confirmDeleteCategory}
-      />
     </SafeAreaView>
   );
 };
@@ -639,5 +672,66 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.white,
     fontWeight: "600",
+  },
+  categoryDeleteConfirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.md,
+  },
+  categoryDeleteConfirmCard: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+  },
+  categoryDeleteConfirmTitle: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: spacing.sm,
+  },
+  categoryDeleteConfirmMessage: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  categoryDeleteConfirmButtons: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  categoryDeleteConfirmCancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+  },
+  categoryDeleteConfirmCancelText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: "700",
+  },
+  categoryDeleteConfirmOkBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.error,
+  },
+  categoryDeleteConfirmOkText: {
+    ...typography.bodySmall,
+    color: colors.white,
+    fontWeight: "700",
   },
 });

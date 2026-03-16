@@ -310,11 +310,11 @@ export const useStaffStore = create<StaffState>((set) => ({
       approvalList: state.approvalList.map((a) =>
         a.id === id
           ? {
-              ...a,
-              status,
-              rejectedCount:
-                status === "rejected" ? a.rejectedCount + 1 : a.rejectedCount,
-            }
+            ...a,
+            status,
+            rejectedCount:
+              status === "rejected" ? a.rejectedCount + 1 : a.rejectedCount,
+          }
           : a,
       ),
     })),

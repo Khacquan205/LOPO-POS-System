@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -44,7 +45,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const fetchStockByProduct = useInventoryStore(
     (state) => state.fetchStockByProduct,
   );
-  const { showSuccessToast } = useToast();
+  const { showSuccessToast, showWarningToast, showErrorToast } = useToast();
   const [categoryList, setCategoryList] = useState<PickerCategory[]>([]);
 
   const editingProduct = useMemo(
@@ -79,8 +80,12 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   const [imageUrl, setImageUrl] = useState<string | undefined>(
     editingProduct?.image,
   );
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | undefined>(
+    editingProduct?.image,
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categoryLookup = useMemo(
     () =>
@@ -241,16 +246,18 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
 
     setImageUrl(localUri);
     setIsUploadingImage(true);
+    setUploadedImageUrl(undefined);
 
     try {
       const uploadedUrl = await uploadImageToCloudinary(localUri);
       setImageUrl(uploadedUrl);
+      setUploadedImageUrl(uploadedUrl);
+      showSuccessToast("Ảnh đã upload xong, bạn có thể lưu sản phẩm.");
     } catch (error) {
       console.warn("Upload image failed:", error);
-      Alert.alert(
-        "Không thể upload ảnh",
-        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
-      );
+      setImageUrl(undefined);
+      setUploadedImageUrl(undefined);
+      showErrorToast("Upload ảnh thất bại. Vui lòng thử lại.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -280,16 +287,18 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
 
     setImageUrl(localUri);
     setIsUploadingImage(true);
+    setUploadedImageUrl(undefined);
 
     try {
       const uploadedUrl = await uploadImageToCloudinary(localUri);
       setImageUrl(uploadedUrl);
+      setUploadedImageUrl(uploadedUrl);
+      showSuccessToast("Ảnh đã upload xong, bạn có thể lưu sản phẩm.");
     } catch (error) {
       console.warn("Upload image failed:", error);
-      Alert.alert(
-        "Không thể upload ảnh",
-        "Đã có lỗi xảy ra khi upload ảnh lên Cloudinary. Vui lòng thử lại.",
-      );
+      setImageUrl(undefined);
+      setUploadedImageUrl(undefined);
+      showErrorToast("Upload ảnh thất bại. Vui lòng thử lại.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -322,7 +331,14 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
     if (!accessToken) return;
+    if (isUploadingImage) {
+      showWarningToast(
+        "Ảnh đang được upload. Vui lòng đợi xong rồi bấm Lưu.",
+      );
+      return;
+    }
     const parsedPrice = Number(productPrice.replace(/[^0-9]/g, ""));
     const normalizedPrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
     const onHand = Number(inventory.replace(/[^0-9]/g, ""));
@@ -369,6 +385,13 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
       color: item.color,
     }));
 
+    const resolvedImageUrl =
+      imageUrl?.startsWith("http") || imageUrl?.startsWith("https")
+        ? imageUrl
+        : uploadedImageUrl;
+
+    setIsSubmitting(true);
+
     try {
       await updateProduct(
         accessToken,
@@ -378,7 +401,7 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           price: normalizedPrice,
           category_id: selectedCategoryId,
           barcode: normalizedBarcode || undefined,
-          image_url: imageUrl,
+          image_url: resolvedImageUrl,
           track_inventory: manageInventory,
           on_hand: manageInventory ? normalizedOnHand : 0,
         },
@@ -405,11 +428,13 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         "Đã có lỗi xảy ra. Vui lòng thử lại.",
       );
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     showSuccessToast("Cập nhật sản phẩm thành công!");
     navigation.navigate("Products");
-  };
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -440,9 +465,13 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
         />
 
         <FooterActions
-          onCancelPress={() => navigation.goBack()}
+          onCancelPress={() => {
+            if (isSubmitting) return;
+            navigation.goBack();
+          }}
           onPrimaryPress={handleSave}
           primaryLabel="Lưu"
+          loading={isSubmitting}
         />
       </ScrollView>
 
@@ -493,6 +522,16 @@ export const EditProductScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Global submitting overlay */}
+      {isSubmitting && (
+        <View style={styles.submittingOverlay}>
+          <View style={styles.submittingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.submittingText}>Đang xử lý...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -505,6 +544,26 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: "#F6F6F6",
+  },
+  submittingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submittingCard: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  submittingText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
   },
   scanContainer: {
     flex: 1,
