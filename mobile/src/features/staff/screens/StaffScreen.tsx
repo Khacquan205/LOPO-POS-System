@@ -4,6 +4,7 @@ import {
   TextInput, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { Staff } from '../mock/staff.mock';
@@ -26,6 +27,14 @@ export const StaffScreen: React.FC<Props> = ({ navigation }) => {
     if (!accessToken) return;
     void fetchStaffList(accessToken);
   }, [accessToken, fetchStaffList]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!accessToken) return;
+      clearError();
+      void fetchStaffList(accessToken);
+    }, [accessToken, clearError, fetchStaffList]),
+  );
 
   const filtered = staffList.filter(
     (s) =>

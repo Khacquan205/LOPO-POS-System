@@ -7,6 +7,7 @@ import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing, typography } from '../../../ui/theme';
 import { useStaffStore } from '../store/staff.store';
 import { useToast } from '../../../ui/components/ToastContext';
+import { useAuthStore } from '../../../store/auth.store';
 import type { MainStackScreenProps } from '../../../types/navigation';
 
 type Props = MainStackScreenProps<'StaffApprovalDetail'>;
@@ -14,8 +15,11 @@ type Props = MainStackScreenProps<'StaffApprovalDetail'>;
 export const StaffApprovalDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { approvalId } = route.params;
   const item = useStaffStore((s) => s.approvalList.find((a) => a.id === approvalId));
+  const approvePendingRequest = useStaffStore((s) => s.approvePendingRequest);
+  const rejectPendingRequest = useStaffStore((s) => s.rejectPendingRequest);
   const setApprovalStatus = useStaffStore((s) => s.setApprovalStatus);
   const blockApproval = useStaffStore((s) => s.blockApproval);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const { showSuccessToast, showErrorToast, showWarningToast } = useToast();
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [rejectVisible, setRejectVisible] = useState(false);
@@ -49,22 +53,40 @@ export const StaffApprovalDetailScreen: React.FC<Props> = ({ route, navigation }
     setConfirmVisible(true);
   };
 
-  const confirmApprove = (): void => {
-    setApprovalStatus(item.id, 'approved');
-    showSuccessToast('Duyệt thành công!');
-    setConfirmVisible(false);
-    navigation.goBack();
+  const confirmApprove = async (): Promise<void> => {
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại');
+      return;
+    }
+    try {
+      await approvePendingRequest(accessToken, item.id);
+      showSuccessToast('Duyệt thành công!');
+      setConfirmVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể duyệt yêu cầu';
+      showErrorToast(message);
+    }
   };
 
   const handleReject = (): void => {
     setRejectVisible(true);
   };
 
-  const confirmReject = (): void => {
-    setApprovalStatus(item.id, 'rejected');
-    showErrorToast('Từ chối thành công!');
-    setRejectVisible(false);
-    navigation.goBack();
+  const confirmReject = async (): Promise<void> => {
+    if (!accessToken) {
+      showErrorToast('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại');
+      return;
+    }
+    try {
+      await rejectPendingRequest(accessToken, item.id);
+      showErrorToast('Từ chối thành công!');
+      setRejectVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể từ chối yêu cầu';
+      showErrorToast(message);
+    }
   };
 
   const handleBlock = (): void => {

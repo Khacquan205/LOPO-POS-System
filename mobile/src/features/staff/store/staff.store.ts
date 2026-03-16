@@ -6,15 +6,26 @@ import {
   ApprovalStatus,
 } from "../mock/staff.mock";
 import { ApiError } from "../../../lib/api/client";
-import { getOwnerStaffList } from "../services/staff.service";
+import {
+  getOwnerStaffList,
+  getPendingJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
+} from "../services/staff.service";
 
 interface StaffState {
   staffList: Staff[];
   isLoading: boolean;
   errorMessage: string | null;
   approvalList: StaffApproval[];
+  isApprovalLoading: boolean;
+  approvalErrorMessage: string | null;
   fetchStaffList: (accessToken: string) => Promise<void>;
+  fetchPendingApprovals: (accessToken: string) => Promise<void>;
+  approvePendingRequest: (accessToken: string, requestId: string) => Promise<void>;
+  rejectPendingRequest: (accessToken: string, requestId: string) => Promise<void>;
   clearError: () => void;
+  clearApprovalError: () => void;
   addStaff: (data: Pick<Staff, "name" | "phone" | "isActive">) => void;
   updateStaff: (
     id: string,
@@ -65,11 +76,20 @@ const normalizeRole = (role: string): Staff["role"] => {
   return "staff";
 };
 
+const normalizeApprovalStatus = (status?: string): ApprovalStatus => {
+  if (status === "approved" || status === "rejected" || status === "blocked") {
+    return status;
+  }
+  return "pending";
+};
+
 export const useStaffStore = create<StaffState>((set) => ({
   staffList: [],
   isLoading: false,
   errorMessage: null,
   approvalList: approvalMock,
+  isApprovalLoading: false,
+  approvalErrorMessage: null,
 
   fetchStaffList: async (accessToken) => {
     if (!accessToken) {
@@ -111,6 +131,134 @@ export const useStaffStore = create<StaffState>((set) => ({
   },
 
   clearError: () => set({ errorMessage: null }),
+
+  fetchPendingApprovals: async (accessToken) => {
+    if (!accessToken) {
+      set({ approvalErrorMessage: "Vui lòng đăng nhập để tải danh sách chờ duyệt" });
+      return;
+    }
+
+    set({ isApprovalLoading: true, approvalErrorMessage: null });
+    try {
+      const list = await getPendingJoinRequests(accessToken);
+      const mapped: StaffApproval[] = list.map((item, index) => {
+        const rawId = item.request_id || String(index + 1);
+        const staffUserId = item.staff_user_id || rawId;
+        const rejectedCount = Number(item.rejected_count ?? 0);
+        const createdAtIso = item.requested_at || item.createdAt || item.updatedAt || "";
+
+        return {
+          id: rawId,
+          staffCode: buildStaffCode(staffUserId),
+          name: item.staff_full_name?.trim() || "Nhân viên",
+          phone: item.staff_phone_number?.trim() || "",
+          createdAt: createdAtIso ? formatDisplayDateTime(createdAtIso) : nowString(),
+          status: normalizeApprovalStatus(item.status),
+          rejectedCount: Number.isFinite(rejectedCount) ? rejectedCount : 0,
+        };
+      });
+
+      set({ approvalList: mapped, isApprovalLoading: false, approvalErrorMessage: null });
+    } catch (error) {
+      let message = "Không thể tải danh sách chờ duyệt";
+      if (error instanceof ApiError) {
+        if (error.statusCode === 401 || error.statusCode === 422) {
+          message = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại";
+        } else if (error.statusCode === 403) {
+          message = "Bạn không có quyền owner để duyệt yêu cầu tham gia";
+        } else if (error.statusCode === 404) {
+          message = "Không tìm thấy cửa hàng của owner";
+        } else {
+          message = error.message || message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+
+      set({ isApprovalLoading: false, approvalErrorMessage: message });
+    }
+  },
+
+  clearApprovalError: () => set({ approvalErrorMessage: null }),
+
+  approvePendingRequest: async (accessToken, requestId) => {
+    if (!accessToken) {
+      throw new Error("Vui lòng đăng nhập để duyệt yêu cầu");
+    }
+    if (!requestId) {
+      throw new Error("Thiếu request id để duyệt yêu cầu");
+    }
+
+    try {
+      await approveJoinRequest(accessToken, requestId);
+      set((state) => ({
+        approvalList: state.approvalList.filter((a) => a.id !== requestId),
+      }));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.statusCode === 400) {
+          throw new Error("Yêu cầu không còn ở trạng thái chờ duyệt");
+        }
+        if (error.statusCode === 401 || error.statusCode === 422) {
+          throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại");
+        }
+        if (error.statusCode === 403) {
+          throw new Error("Bạn không có quyền owner để duyệt yêu cầu");
+        }
+        if (error.statusCode === 404) {
+          throw new Error("Không tìm thấy yêu cầu hoặc cửa hàng");
+        }
+        if (error.statusCode === 409) {
+          throw new Error("Nhân viên đã thuộc cửa hàng khác");
+        }
+        throw new Error(error.message || "Không thể duyệt yêu cầu tham gia");
+      }
+
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      throw new Error("Không thể duyệt yêu cầu tham gia");
+    }
+  },
+
+  rejectPendingRequest: async (accessToken, requestId) => {
+    if (!accessToken) {
+      throw new Error("Vui lòng đăng nhập để từ chối yêu cầu");
+    }
+    if (!requestId) {
+      throw new Error("Thiếu request id để từ chối yêu cầu");
+    }
+
+    try {
+      await rejectJoinRequest(accessToken, requestId);
+      set((state) => ({
+        approvalList: state.approvalList.filter((a) => a.id !== requestId),
+      }));
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.statusCode === 400) {
+          throw new Error("Yêu cầu không còn ở trạng thái chờ duyệt");
+        }
+        if (error.statusCode === 401 || error.statusCode === 422) {
+          throw new Error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại");
+        }
+        if (error.statusCode === 403) {
+          throw new Error("Bạn không có quyền owner để từ chối yêu cầu");
+        }
+        if (error.statusCode === 404) {
+          throw new Error("Không tìm thấy yêu cầu hoặc cửa hàng");
+        }
+        throw new Error(error.message || "Không thể từ chối yêu cầu tham gia");
+      }
+
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      throw new Error("Không thể từ chối yêu cầu tham gia");
+    }
+  },
 
   addStaff: (data) =>
     set((state) => {
