@@ -14,9 +14,8 @@ export const OrderProductRow: React.FC<OrderProductRowProps> = ({ item }) => {
         <Text style={styles.qty}>{item.quantity}</Text>
       </View>
       <View style={styles.nameCol}>
-        <Text style={styles.name} numberOfLines={2}>
-          {item.productName}
-        </Text>
+        <Text style={styles.name} numberOfLines={2}>{item.productName}</Text>
+        {item.note ? <Text style={[styles.note, styles.noteWarning]}>{item.note}</Text> : null}
       </View>
       <Text style={styles.price}>
         {formatCurrencyVND(item.unitPrice * item.quantity)}
@@ -55,6 +54,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textPrimary,
     fontWeight: "500",
+  },
+  note: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  noteWarning: {
+    color: colors.error,
   },
   price: {
     fontSize: 14,

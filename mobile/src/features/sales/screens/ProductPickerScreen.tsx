@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { ProductListItem } from '../components';
 import { CategoryChips } from '../../products/components/CategoryChips';
 import { useProductsStore } from '../../products/store/products.store';
@@ -38,6 +41,7 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { alertProps, showAlert } = useCommonAlert();
 
   useEffect(() => {
     if (!accessToken) return;
@@ -80,13 +84,22 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [products, selectedCategory, search]);
 
   const handleProductAdd = useCallback((product: ProductItemViewModel) => {
+    // Enforce inventory cap
+    if (!product.trackInventory || product.onHand <= 0) {
+      showAlert({
+        variant: 'warning',
+        title: 'Hết hàng',
+        message: 'Sản phẩm tạm hết hàng',
+      });
+      return;
+    }
+
     setSelectedMap((prev) => {
       const current = prev[product.id] ?? 0;
-      // Enforce inventory cap
       if (product.trackInventory && current >= product.onHand) return prev;
       return { ...prev, [product.id]: current + 1 };
     });
-  }, []);
+  }, [showAlert]);
 
   const handleProductRemove = useCallback((product: ProductItemViewModel) => {
     setSelectedMap((prev) => {
@@ -96,6 +109,8 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
       } else {
         next[product.id] -= 1;
       }
+
+      <CommonAlertModal {...alertProps} />
       return next;
     });
   }, []);
@@ -114,6 +129,21 @@ export const ProductPickerScreen: React.FC<Props> = ({ navigation, route }) => {
           quantity,
         };
       });
+
+    const routes = navigation.getState().routes;
+    const previous = routes[routes.length - 2];
+    if (previous) {
+      navigation.dispatch({
+        ...CommonActions.setParams({
+          ...((returnScreen === 'Sales')
+            ? { pickedItems }
+            : { orderId, pickedItems }),
+        }),
+        source: previous.key,
+      });
+      navigation.goBack();
+      return;
+    }
 
     if (returnScreen === 'Sales') {
       navigation.navigate('Sales', { pickedItems });

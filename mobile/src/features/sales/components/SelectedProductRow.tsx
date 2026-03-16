@@ -10,12 +10,13 @@ export interface SalesOrderItem extends PickedItem {
 
 interface SelectedProductRowProps {
   item: SalesOrderItem;
+  note?: string;
   onQtyPress: () => void;
   onAdd: () => void;
   onRemove: () => void;
 }
 
-export const SelectedProductRow: React.FC<SelectedProductRowProps> = ({ item, onQtyPress, onAdd, onRemove }) => {
+export const SelectedProductRow: React.FC<SelectedProductRowProps> = ({ item, note, onQtyPress, onAdd, onRemove }) => {
   return (
     <View style={styles.container}>
       {/* Stepper: − qty + */}
@@ -32,7 +33,10 @@ export const SelectedProductRow: React.FC<SelectedProductRowProps> = ({ item, on
       </View>
 
       {/* Name */}
-      <Text style={styles.name} numberOfLines={2}>{item.productName}</Text>
+      <View style={styles.nameCol}>
+        <Text style={styles.name} numberOfLines={2}>{item.productName}</Text>
+        {note ? <Text style={styles.note}>{note}</Text> : null}
+      </View>
 
       {/* Total */}
       <Text style={styles.total}>
@@ -84,11 +88,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   name: {
-    flex: 1,
     fontSize: 14,
     fontWeight: '500',
     color: colors.textPrimary,
     marginRight: spacing.sm,
+  },
+  nameCol: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  note: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 2,
   },
   total: {
     fontSize: 14,

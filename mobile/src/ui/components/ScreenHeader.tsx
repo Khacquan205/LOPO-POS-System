@@ -9,6 +9,9 @@ interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  onBackPress?: () => void;
+  rightActionText?: string;
+  onRightActionPress?: () => void;
   rightIcon?: React.ComponentProps<typeof Ionicons>['name'];
   onRightPress?: () => void;
   rightSecondaryIcon?: React.ComponentProps<typeof Ionicons>['name'];
@@ -19,6 +22,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   subtitle,
   showBack = true,
+  onBackPress,
+  rightActionText,
+  onRightActionPress,
   rightIcon,
   onRightPress,
   rightSecondaryIcon,
@@ -35,7 +41,13 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         <View style={styles.leftSection}>
           {showBack && (
             <TouchableOpacity
-              onPress={() => (canGoBack ? navigation.goBack() : undefined)}
+              onPress={() => {
+                if (onBackPress) {
+                  onBackPress();
+                  return;
+                }
+                if (canGoBack) navigation.goBack();
+              }}
               style={styles.iconButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -52,6 +64,15 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
         {/* Right - Optional icons */}
         <View style={styles.rightSection}>
+          {rightActionText && (
+            <TouchableOpacity
+              onPress={onRightActionPress}
+              style={styles.actionButton}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionButtonText}>{rightActionText}</Text>
+            </TouchableOpacity>
+          )}
           {rightSecondaryIcon && (
             <TouchableOpacity
               onPress={onRightSecondaryPress}
@@ -103,6 +124,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: spacing.xs,
+  },
+  actionButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   title: {
     ...typography.h3,

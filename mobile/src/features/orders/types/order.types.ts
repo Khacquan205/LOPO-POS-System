@@ -2,9 +2,9 @@
 export type OrderStatusApi = "draft" | "completed" | "cancelled";
 
 export const STATUS_LABELS: Record<OrderStatusApi, string> = {
-  draft: "Đơn nháp",
-  completed: "Hoàn thành",
-  cancelled: "Đã hủy",
+  draft: 'Nháp',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
 };
 
 export const STATUS_FILTER_LABELS: Record<OrderStatusApi | "ALL", string> = {
@@ -60,4 +60,5 @@ export interface OrderItemDisplay {
   productName: string;
   unitPrice: number;
   quantity: number;
+  note?: string;
 }

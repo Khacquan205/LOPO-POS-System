@@ -1,15 +1,22 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { ScreenHeader, Button } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { OrderStatusChip, OrderProductRow, CustomerBar } from '../components';
 import { CustomerPickerBottomSheet } from '../../customers/components';
 import { getOrderDetail, updateOrderItems, type ApiOrderItem } from '../../sales/services/orders.service';
 import { formatCurrencyVND, type OrderItemDisplay, type OrderStatusApi } from '../types/order.types';
 import { useAuthStore } from '../../../store/auth.store';
+import { useProductsStore } from '../../products/store/products.store';
+import { useCategoriesStore } from '../../products/store/categories.store';
+import { useInventoryStore } from '../../products/store/inventory.store';
 import type { MainStackScreenProps, PickedItem } from '../../../types/navigation';
+import type { StockItem } from '../../../lib/stock';
 
 type Props = MainStackScreenProps<'DraftOrderDetail'>;
 
@@ -31,15 +38,21 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
   const { orderId } = route.params;
   const insets = useSafeAreaInsets();
   const token = useAuthStore((s) => s.accessToken);
+  const products = useProductsStore((s) => s.products);
+  const fetchProducts = useProductsStore((s) => s.fetchProducts);
+  const fetchCategories = useCategoriesStore((s) => s.fetchCategories);
+  const stockByProductId = useInventoryStore((s) => s.stockByProductId);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [orderCode, setOrderCode] = useState('');
   const [orderStatus, setOrderStatus] = useState<OrderStatusApi>('draft');
   const [localItems, setLocalItems] = useState<DraftItem[]>([]);
   const [localCustomer, setLocalCustomer] = useState<{ name: string; phone?: string } | undefined>();
   const [showPicker, setShowPicker] = useState(false);
   const isMounted = useRef(true);
+  const { alertProps, showAlert } = useCommonAlert();
 
   useEffect(() => {
     isMounted.current = true;
@@ -59,20 +72,32 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
       })
       .catch((err: unknown) => {
         if (!isMounted.current) return;
-        Alert.alert('Lỗi', err instanceof Error ? err.message : 'Không thể tải đơn hàng');
+        setErrorMessage(err instanceof Error ? err.message : 'Không thể tải đơn hàng');
       })
       .finally(() => { if (isMounted.current) setIsLoading(false); });
   }, [token, orderId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) return;
+      (async () => {
+        await fetchCategories(token);
+        const cats = useCategoriesStore.getState().categories;
+        await fetchProducts(token, cats);
+      })();
+    }, [token, fetchCategories, fetchProducts]),
+  );
 
   // ── Sync items to backend ──────────────────────────────────
   const syncItems = useCallback(async (items: DraftItem[]) => {
     if (!token) return;
     setIsSyncing(true);
+    setErrorMessage(null);
     try {
       const payload = items.map((it) => ({ product_id: it.productId, quantity: it.quantity }));
       await updateOrderItems(token, orderId, payload);
     } catch (err) {
-      Alert.alert('Đồng bộ lỗi', err instanceof Error ? err.message : 'Không thể lưu thay đổi');
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể lưu thay đổi');
     } finally {
       if (isMounted.current) setIsSyncing(false);
     }
@@ -129,7 +154,71 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
 
   const total = localItems.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
 
-  const handlePayment = useCallback(() => {
+  const stockItems: StockItem[] = useMemo(
+    () => localItems.map((it) => ({ productId: it.productId, quantity: it.quantity })),
+    [localItems],
+  );
+
+  const resolveStockInfo = useCallback((productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      return { onHand: product.onHand, trackInventory: product.trackInventory };
+    }
+    const fallback = stockByProductId[productId];
+    if (typeof fallback === 'number') {
+      return { onHand: fallback, trackInventory: true };
+    }
+    return { onHand: 0, trackInventory: false };
+  }, [products, stockByProductId]);
+
+  const warnings = useMemo(() => {
+    const nextWarnings: Record<string, string> = {};
+    stockItems.forEach((item) => {
+      const { onHand, trackInventory } = resolveStockInfo(item.productId);
+      if (!trackInventory || onHand <= 0) {
+        nextWarnings[item.productId] = 'Sản phẩm tạm hết hàng';
+        return;
+      }
+      if (item.quantity > onHand) {
+        nextWarnings[item.productId] = `Chỉ còn ${onHand} sản phẩm trong kho`;
+      }
+    });
+    return nextWarnings;
+  }, [stockItems, resolveStockInfo]);
+
+  const displayItems = useMemo(
+    () => localItems.map((it) => ({ ...it, note: warnings[it.productId] })),
+    [localItems, warnings],
+  );
+
+  const hasInvalidItems = Object.keys(warnings).length > 0;
+
+  const handlePayment = useCallback(async () => {
+    if (!token) return;
+    await fetchCategories(token);
+    const cats = useCategoriesStore.getState().categories;
+    await fetchProducts(token, cats);
+
+    const latest = useProductsStore.getState().products;
+    const latestStocks = useInventoryStore.getState().stockByProductId;
+    const invalid = stockItems.some((item) => {
+      const product = latest.find((p) => p.id === item.productId);
+      if (product) {
+        if (!product.trackInventory || product.onHand <= 0) return true;
+        return item.quantity > product.onHand;
+      }
+      const fallback = latestStocks[item.productId];
+      if (typeof fallback !== 'number') return true;
+      return item.quantity > fallback;
+    });
+    if (invalid || hasInvalidItems) {
+      showAlert({
+        variant: 'warning',
+        title: 'Không thể thanh toán',
+        message: 'Đơn hàng có sản phẩm vượt quá số lượng trong kho',
+      });
+      return;
+    }
     navigation.navigate('OrderSummary', {
       orderId,
       fromDraft: true,
@@ -146,7 +235,7 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
         total,
       },
     });
-  }, [navigation, orderId, orderCode, orderStatus, localItems, localCustomer, total]);
+  }, [token, fetchCategories, fetchProducts, localItems, hasInvalidItems, navigation, orderId, orderCode, orderStatus, localCustomer, total, showAlert]);
 
   if (isLoading) {
     return (
@@ -177,8 +266,8 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
 
       {/* Product list */}
       <FlatList
-        data={localItems}
-        keyExtractor={(item) => item.id}
+        data={displayItems}
+        keyExtractor={(item) => `${orderId}:${item.productId}`}
         renderItem={({ item }) => <OrderProductRow item={item} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         style={styles.list}
@@ -195,6 +284,18 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
         }
       />
 
+      {hasInvalidItems && (
+        <Text style={styles.paymentWarning}>
+          Vui lòng cập nhật số lượng các sản phẩm không đủ tồn kho trước khi thanh toán.
+        </Text>
+      )}
+
+      {errorMessage && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
+
       {/* Customer bar */}
       <CustomerBar customer={localCustomer} isEditable onPress={() => setShowPicker(true)} />
 
@@ -204,7 +305,12 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
           <Text style={styles.totalLabel}>Tổng cộng</Text>
           <Text style={styles.totalValue}>{formatCurrencyVND(total)}</Text>
         </View>
-        <Button title="Thanh toán" onPress={handlePayment} disabled={localItems.length === 0} />
+        
+        <Button
+          title="Thanh toán"
+          onPress={handlePayment}
+          disabled={localItems.length === 0 || hasInvalidItems}
+        />
       </View>
 
       {/* Customer picker bottom sheet */}
@@ -213,6 +319,8 @@ export const DraftOrderDetailScreen: React.FC<Props> = ({ navigation, route }) =
         onClose={() => setShowPicker(false)}
         onSelect={(c) => { setLocalCustomer({ name: c.name, phone: c.phone }); setShowPicker(false); }}
       />
+
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };
@@ -288,6 +396,26 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.md,
+  },
+  paymentWarning: {
+    marginTop: spacing.sm,
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  errorBanner: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: '#FFF1F2',
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    textAlign: 'center',
   },
   totalRow: {
     flexDirection: 'row',

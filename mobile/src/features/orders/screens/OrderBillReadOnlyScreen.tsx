@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../../ui/components';
 import { colors, spacing } from '../../../ui/theme';
+import { CommonAlertModal } from '../../../common/shared/components/CommonAlertModal';
+import { useCommonAlert } from '../../../common/shared/hooks/useCommonAlert';
 import { OrderStatusChip, OrderProductRow, CustomerBar } from '../components';
 import { getOrderDetail, type ApiOrderItem } from '../../sales/services/orders.service';
 import { formatCurrencyVND, formatDateTime, type OrderItemDisplay, type OrderStatusApi } from '../types/order.types';
@@ -32,6 +34,7 @@ export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation: _navigati
   const [orderCreatedAt, setOrderCreatedAt] = useState('');
   const [items, setItems] = useState<OrderItemDisplay[]>([]);
   const [grandTotal, setGrandTotal] = useState(0);
+  const { alertProps, showAlert } = useCommonAlert();
 
   useEffect(() => {
     if (!token) return;
@@ -45,10 +48,15 @@ export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation: _navigati
         setGrandTotal(order.grand_total);
       })
       .catch((err: unknown) => {
-        Alert.alert('Lỗi', err instanceof Error ? err.message : 'Không thể tải đơn hàng');
+        showAlert({
+          variant: 'danger',
+          title: 'Lỗi',
+          message: err instanceof Error ? err.message : 'Không thể tải đơn hàng',
+          showCancel: false,
+        });
       })
       .finally(() => setIsLoading(false));
-  }, [token, orderId]);
+  }, [token, orderId, showAlert]);
 
   if (isLoading) {
     return (
@@ -74,7 +82,7 @@ export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation: _navigati
       {/* Product list */}
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => `${orderId}:${item.productId}`}
         renderItem={({ item }) => <OrderProductRow item={item} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         style={styles.list}
@@ -99,6 +107,8 @@ export const OrderBillReadOnlyScreen: React.FC<Props> = ({ navigation: _navigati
 
       {/* No action footer — completed/cancelled orders can't be paid again */}
       <View style={{ paddingBottom: insets.bottom }} />
+
+      <CommonAlertModal {...alertProps} />
     </View>
   );
 };

@@ -1,20 +1,18 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../../ui/theme';
 
 type KeyLabel =
   | '1' | '2' | '3'
   | '4' | '5' | '6'
   | '7' | '8' | '9'
-  | '+/-' | '0' | '.'
-  | 'SL' | '%' | 'GIA' | 'DEL';
+  | 'DEL';
 
 const ROWS: KeyLabel[][] = [
-  ['1', '2', '3', 'SL'],
-  ['4', '5', '6', '%'],
-  ['7', '8', '9', 'GIA'],
-  ['+/-', '0', '.', 'DEL'],
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  ['DEL'],
 ];
 
 interface QuantityKeypadProps {
@@ -28,15 +26,9 @@ export const QuantityKeypad: React.FC<QuantityKeypadProps> = ({ value, onChange 
       onChange(value.length > 1 ? value.slice(0, -1) : '0');
       return;
     }
-    if (key === 'SL' || key === '%' || key === 'GIA') return; // mode keys — no-op for now
-    if (key === '+/-') {
-      // toggle negative — not needed for qty but keep the key
-      return;
-    }
-    if (key === '.') return; // quantities are integers
-    // Append digit
+
     const next = value === '0' ? key : value + key;
-    if (next.length > 5) return; // cap at 99999
+    if (next.length > 5) return;
     onChange(next);
   };
 
@@ -44,32 +36,18 @@ export const QuantityKeypad: React.FC<QuantityKeypadProps> = ({ value, onChange 
     <View style={styles.container}>
       {ROWS.map((row, ri) => (
         <View key={ri} style={styles.row}>
-          {row.map((key) => {
-            const isMode = key === 'SL' || key === '%' || key === 'GIA';
-            const isDel = key === 'DEL';
-            const isActive = key === 'SL'; // Số lượng is default active mode
-
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.key,
-                  isMode && styles.modeKey,
-                  isActive && styles.modeKeyActive,
-                ]}
-                onPress={() => handleKey(key)}
-                activeOpacity={0.6}
-              >
-                {isDel ? (
-                  <Ionicons name="backspace-outline" size={22} color={colors.textPrimary} />
-                ) : (
-                  <Text style={[styles.keyText, isMode && styles.modeKeyText, isActive && styles.modeKeyTextActive]}>
-                    {key === 'SL' ? 'Số lượng' : key === 'GIA' ? 'Giá' : key}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+          {row.map((key) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.key, key === 'DEL' && styles.deleteKey]}
+              onPress={() => handleKey(key)}
+              activeOpacity={0.6}
+            >
+              <Text style={[styles.keyText, key === 'DEL' && styles.deleteText]}>
+                {key === 'DEL' ? 'Xóa' : key}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       ))}
     </View>
@@ -100,23 +78,17 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  modeKey: {
-    backgroundColor: '#EBF2FF',
-  },
-  modeKeyActive: {
-    backgroundColor: colors.primary,
-  },
   keyText: {
     fontSize: 20,
     fontWeight: '500',
     color: colors.textPrimary,
   },
-  modeKeyText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
+  deleteKey: {
+    marginBottom: spacing.sm,
   },
-  modeKeyTextActive: {
-    color: '#FFFFFF',
+  deleteText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.error,
   },
 });
