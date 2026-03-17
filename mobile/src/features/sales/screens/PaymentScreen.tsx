@@ -30,6 +30,7 @@ import { useOrdersStore } from '../../orders/store/orders.store';
 type Props = MainStackScreenProps<'Payment'>;
 
 type PaymentMethod = 'cash' | 'transfer';
+type BackendPaymentMethod = 'cash' | 'bank_transfer';
 
 const METHODS: {
   id: PaymentMethod;
@@ -46,6 +47,9 @@ const buildTransactionCode = (seed?: string) => {
   const base = seed?.trim() ? seed : 'ORDER';
   const suffix = String(Date.now()).slice(-6);
   return `${base}-${suffix}`;
+};
+const mapPaymentMethodToBackend = (method: PaymentMethod): BackendPaymentMethod => {
+  return method === 'transfer' ? 'bank_transfer' : 'cash';
 };
 
 export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -206,6 +210,9 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       });
       return;
     }
+
+    const backendPaymentMethod = mapPaymentMethodToBackend(method);
+
     // No orderId → legacy display-only path
     if (!orderId) {
       showAlert({
@@ -221,7 +228,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
     if (orderId === posOrderId) {
       // Current POS session -> use posStore (handles its own loading state)
       const ok = await checkout(accessToken, {
-        payment_method: method,
+        payment_method: backendPaymentMethod,
         payment_status: 'paid',
       });
       if (ok) {
@@ -250,7 +257,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
       setIsCheckingOutDirect(true);
       try {
         await checkoutOrder(accessToken, orderId, {
-          payment_method: method,
+          payment_method: backendPaymentMethod,
           payment_status: 'paid',
         });
         showAlert({
