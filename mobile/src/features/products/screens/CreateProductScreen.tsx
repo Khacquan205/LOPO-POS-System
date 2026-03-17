@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import { ImagePickerHeader } from "../components/createProduct/ImagePickerHeader";
 import { ProductForm } from "../components/createProduct/ProductForm";
@@ -36,6 +36,7 @@ import { colors, spacing } from "../../../ui/theme";
 
 export const CreateProductScreen: React.FC = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const createProduct = useProductsStore((state) => state.createProduct);
   const { showSuccessToast, showWarningToast, showErrorToast } = useToast();
   const products = useProductsStore((state) => state.products);
@@ -393,11 +394,11 @@ export const CreateProductScreen: React.FC = () => {
 
         {/* Footer Actions */}
         <FooterActions
-        onCancelPress={handleCancel}
-        onPrimaryPress={handleCreate}
-        primaryLabel="Tạo mới"
-        loading={isSubmitting}
-      />
+          onCancelPress={handleCancel}
+          onPrimaryPress={handleCreate}
+          primaryLabel="Tạo mới"
+          loading={isSubmitting}
+        />
       </ScrollView>
 
       {/* Category Picker Bottom Sheet */}
@@ -445,7 +446,12 @@ export const CreateProductScreen: React.FC = () => {
             <Text style={styles.scanHint}>Đưa mã vạch vào khung để quét</Text>
           </View>
 
-          <View style={styles.scanTopBar}>
+          <View
+            style={[
+              styles.scanTopBar,
+              { paddingTop: insets.top + spacing.lg },
+            ]}
+          >
             <TouchableOpacity
               style={styles.scanBackButton}
               onPress={() => setIsScanningBarcode(false)}
@@ -453,7 +459,7 @@ export const CreateProductScreen: React.FC = () => {
             >
               <Ionicons name="arrow-back" size={22} color={colors.white} />
             </TouchableOpacity>
-            <Text style={styles.scanTopTitle}>Quét mã vạch</Text>
+            <Text style={styles.scanTopTitle}>Quét sản phẩm</Text>
             <View style={styles.scanTopSpacer} />
           </View>
         </View>
