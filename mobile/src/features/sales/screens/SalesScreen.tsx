@@ -342,58 +342,59 @@ export const SalesScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [handleNewOrder]);
 
   const handleBack = useCallback(() => {
-    if (posItems.length === 0) {
-      showAlert({
-        variant: 'danger',
-        title: 'Hủy đơn',
-        message: 'Bạn có muốn hủy đơn này không?',
-        confirmText: 'Xác nhận',
-        cancelText: 'Hủy',
-        showCancel: true,
-        onConfirm: async () => {
-          if (orderId && accessToken) {
-            const ok = await cancelOrder(accessToken);
-            if (ok) resetSession();
-          } else {
-            resetSession();
-          }
-
-          if (isEditingDraft) {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-              return;
-            }
-            navigation.navigate('Orders');
-            return;
-          }
-
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'MainTabs' }],
-            }),
-          );
-        },
-      });
-      return;
-    }
-
-    if (isEditingDraft) {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
+    // Chỉ xác nhận hủy khi đã có draft order trên server
+    if (!orderId) {
+      if (isEditingDraft) {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return;
+        }
+        navigation.navigate('Orders');
         return;
       }
-      navigation.navigate('Orders');
+
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        }),
+      );
       return;
     }
 
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      }),
-    );
-  }, [posItems.length, orderId, accessToken, cancelOrder, resetSession, isEditingDraft, navigation, showAlert]);
+    showAlert({
+      variant: 'danger',
+      title: 'Hủy đơn',
+      message: 'Bạn có muốn hủy đơn này không?',
+      confirmText: 'Xác nhận',
+      cancelText: 'Hủy',
+      showCancel: true,
+      onConfirm: async () => {
+        if (orderId && accessToken) {
+          const ok = await cancelOrder(accessToken);
+          if (ok) resetSession();
+        } else {
+          resetSession();
+        }
+
+        if (isEditingDraft) {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+          }
+          navigation.navigate('Orders');
+          return;
+        }
+
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          }),
+        );
+      },
+    });
+  }, [orderId, accessToken, cancelOrder, resetSession, isEditingDraft, navigation, showAlert]);
 
   // Convert POS items to SalesOrderItem shape for SelectedProductRow
   const salesItems: SalesOrderItem[] = posItems.map((it) => ({
